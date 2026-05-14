@@ -1,0 +1,28 @@
+rppg:
+  fps: 30
+  min_duration_sec: 30
+  hr_range: [40, 200]
+  bandpass_cutoff: [0.7, 4.0]  # Hz
+  roi_landmarks:
+    forehead: [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
+    left_cheek: [117, 118, 119, 100, 126, 209, 198, 131]
+    right_cheek: [346, 347, 348, 329, 355, 429, 420, 360]
+  signal_method: "CHROM"
+
+audio:
+  sample_rate: 16000
+  cough_threshold: 0.5
+  mel_bins: 128
+  hop_length: 512
+  win_length: 1024
+  target_classes: ["TB", "COVID", "Pneumonia", "Whooping", "Asthma", "COPD", "Healthy", "Uncertain"]
+
+visual:
+  multi_task_labels: ["jaundice", "anemia", "cyanosis", "dengue"]
+  input_size: [224, 224]
+
+fusion:
+  latent_dim: 128
+  num_heads: 4
+  dropout: 0.1
+  uncertainty_passes: 20
