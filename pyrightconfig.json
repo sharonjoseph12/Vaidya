@@ -1,5 +1,5 @@
 {
-  "venvPath": "c:\\Users\\siddharth\\Desktop\\Vaidya",
+  "venvPath": ".",
   "venv": ".venv",
   "extraPaths": [
     "prism"

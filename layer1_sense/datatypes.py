@@ -137,3 +137,12 @@ class SenseResult:
     @classmethod
     def from_json(cls, s: str) -> "SenseResult":
         return cls.from_dict(json.loads(s))
+
+@dataclass
+class PRISMSenseResult:
+    disease_probabilities: Dict[str, float]
+    uncertainty_bounds: Dict[str, Tuple[float, float]]
+    shap_values: Optional[Dict[str, float]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
