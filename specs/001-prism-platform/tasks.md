@@ -34,9 +34,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 Install all dependencies from `requirements.txt` and verify imports work (mediapipe, librosa, torch, tensorflow, tensorflow_hub)
-- [ ] T008 [P] Create config loader utility in `layer1_sense/config.py` that reads `configs/sense_config.yaml` and exposes typed config objects
-- [ ] T009 [P] Create logging setup in `layer1_sense/logger.py` — structured JSON logging via Python stdlib, configurable log level, no print statements
+- [x] T007 Install all dependencies from `requirements.txt` and verify imports work (mediapipe, librosa, torch, tensorflow, tensorflow_hub)
+- [x] T008 [P] Create config loader utility in `layer1_sense/config.py` that reads `configs/sense_config.yaml` and exposes typed config objects
+- [x] T009 [P] Create logging setup in `layer1_sense/logger.py` — structured JSON logging via Python stdlib, configurable log level, no print statements
 
 **Checkpoint**: Foundation ready — user story implementation can now begin in parallel.
 
@@ -50,41 +50,41 @@
 
 ### 3A: rPPG Sub-Module
 
-- [ ] T010 [P] [US1] Implement MediaPipe FaceMesh face detection with 3-ROI extraction (forehead, left cheek, right cheek) using specific landmark indices in `layer1_sense/rppg/face_detector.py`
-- [ ] T011 [P] [US1] Implement ROI mean-RGB extraction with CLAHE lighting normalization and gray-world white balance correction in `layer1_sense/rppg/roi_extractor.py`
-- [ ] T012 [US1] Implement CHROM rPPG signal processing pipeline (linear detrend → moving average subtraction → CHROM method → bandpass 0.7–4.0Hz → SNR-weighted ROI fusion) in `layer1_sense/rppg/signal_processor.py`
-- [ ] T013 [US1] Implement vitals estimation (HR via Welch PSD, SpO2 via Beer-Lambert ratio, HRV via peak detection + RMSSD/SDNN/LF-HF, RR via respiratory envelope) in `layer1_sense/rppg/vitals_estimator.py`
-- [ ] T014 [US1] Implement end-to-end rPPG pipeline class `PRISMrPPGPipeline` with `process_video()` and `process_frame_stream()` methods, 30-second minimum enforcement, and logging in `layer1_sense/rppg/rppg_pipeline.py`
-- [ ] T015 [P] [US1] Write rPPG unit tests in `layer1_sense/tests/test_rppg.py` — synthetic sinusoidal signal → HR ±2 BPM, no-face → FaceNotDetectedError, short video → InsufficientDataError
+- [x] T010 [P] [US1] Implement MediaPipe FaceMesh face detection with 3-ROI extraction (forehead, left cheek, right cheek) using specific landmark indices in `layer1_sense/rppg/face_detector.py`
+- [x] T011 [P] [US1] Implement ROI mean-RGB extraction with CLAHE lighting normalization and gray-world white balance correction in `layer1_sense/rppg/roi_extractor.py`
+- [x] T012 [x] [US1] Implement CHROM rPPG signal processing pipeline (linear detrend → moving average subtraction → CHROM method → bandpass 0.7–4.0Hz → SNR-weighted ROI fusion) in `layer1_sense/rppg/signal_processor.py`
+- [x] T013 [US1] Implement vitals estimation (HR via Welch PSD, SpO2 via Beer-Lambert ratio, HRV via peak detection + RMSSD/SDNN/LF-HF, RR via respiratory envelope) in `layer1_sense/rppg/vitals_estimator.py`
+- [x] T014 [US1] Implement end-to-end rPPG pipeline class `PRISMrPPGPipeline` with `process_video()` and `process_frame_stream()` methods, 30-second minimum enforcement, and logging in `layer1_sense/rppg/rppg_pipeline.py`
+- [x] T015 [P] [US1] Write rPPG unit tests in `layer1_sense/tests/test_rppg.py` — synthetic sinusoidal signal → HR ±2 BPM, no-face → FaceNotDetectedError, short video → InsufficientDataError
 
 ### 3B: Audio Sub-Module
 
-- [ ] T016 [P] [US1] Implement energy-based cough detector with frequency confirmation and CNN binary classifier (cough vs non-cough) in `layer1_sense/audio/cough_detector.py`
-- [ ] T017 [P] [US1] Implement acoustic feature extractor (Mel spectrogram 128 bins, MFCC 40+Δ+ΔΔ=120, Chroma STFT, spectral centroid/rolloff/bandwidth/ZCR/flux, temporal features) in `layer1_sense/audio/feature_extractor.py`
-- [ ] T018 [US1] Implement YAMNet fine-tuning wrapper `PRISMCoughHead` (8-class: TB, COVID, Pneumonia, Whooping cough, Asthma, COPD, Healthy, Uncertain) with 1D-CNN ensemble and `predict()` method in `layer1_sense/audio/cough_classifier.py`
-- [ ] T019 [P] [US1] Implement breathing analyzer with Hilbert transform envelope segmentation, I:E ratio, wheeze/crackle/stridor binary CNNs, and severity scoring in `layer1_sense/audio/breathing_analyzer.py`
-- [ ] T020 [P] [US1] Implement voice biomarker extraction (jitter, shimmer, HNR via parselmouth; RPDE, DFA, PPE; Parkinson's SVM, anemia CatBoost regressor) in `layer1_sense/audio/voice_biomarker.py`
-- [ ] T021 [US1] Implement `PRISMAudioPipeline` with `analyze_cough()`, `analyze_breathing()`, `analyze_voice()`, `full_analysis()` (parallel via ThreadPoolExecutor) in `layer1_sense/audio/audio_pipeline.py`
-- [ ] T022 [P] [US1] Write audio unit tests in `layer1_sense/tests/test_audio.py` — sine wave → breathing rate, silence → Uncertain class, valid probability output shape
+- [x] T016 [P] [US1] Implement energy-based cough detector with frequency confirmation and CNN binary classifier (cough vs non-cough) in `layer1_sense/audio/cough_detector.py`
+- [x] T017 [P] [US1] Implement acoustic feature extractor (Mel spectrogram 128 bins, MFCC 40+Δ+ΔΔ=120, Chroma STFT, spectral centroid/rolloff/bandwidth/ZCR/flux, temporal features) in `layer1_sense/audio/feature_extractor.py`
+- [x] T018 [US1] Implement YAMNet fine-tuning wrapper `PRISMCoughHead` (8-class: TB, COVID, Pneumonia, Whooping cough, Asthma, COPD, Healthy, Uncertain) with 1D-CNN ensemble and `predict()` method in `layer1_sense/audio/cough_classifier.py`
+- [x] T019 [P] [US1] Implement breathing analyzer with Hilbert transform envelope segmentation, I:E ratio, wheeze/crackle/stridor binary CNNs, and severity scoring in `layer1_sense/audio/breathing_analyzer.py`
+- [x] T020 [P] [US1] Implement voice biomarker extraction (jitter, shimmer, HNR via parselmouth; RPDE, DFA, PPE; Parkinson's SVM, anemia CatBoost regressor) in `layer1_sense/audio/voice_biomarker.py`
+- [x] T021 [US1] Implement `PRISMAudioPipeline` with `analyze_cough()`, `analyze_breathing()`, `analyze_voice()`, `full_analysis()` (parallel via ThreadPoolExecutor) in `layer1_sense/audio/audio_pipeline.py`
+- [x] T022 [P] [US1] Write audio unit tests in `layer1_sense/tests/test_audio.py` — sine wave → breathing rate, silence → Uncertain class, valid probability output shape
 
 ### 3C: Visual Sub-Module
 
-- [ ] T023 [P] [US1] Implement face ROI segmentation (sclera, conjunctiva, lips, skin regions via MediaPipe landmark indices → pixel masks) in `layer1_sense/visual/face_analyzer.py`
-- [ ] T024 [US1] Implement color-based biomarker scoring (jaundice via HSV sclera, anemia via conjunctival redness ratio, cyanosis via lip blue dominance, dengue flush via periorbital R-channel, pallor via luminance) in `layer1_sense/visual/color_biomarker.py`
-- [ ] T025 [US1] Implement MobileNetV3-Large multi-task classifier with 4 parallel heads (jaundice 4-class, anemia binary, cyanosis binary, dengue binary) and training function in `layer1_sense/visual/disease_classifier.py`
-- [ ] T026 [US1] Implement `PRISMVisualPipeline` with `analyze_frame()`, `analyze_video()` (median aggregation), and cross-validation between color_biomarker and classifier outputs in `layer1_sense/visual/visual_pipeline.py`
-- [ ] T027 [P] [US1] Write visual unit tests in `layer1_sense/tests/test_visual.py` — synthetic blank frame → no-disease baseline, face-detected frame → valid scores
+- [x] T023 [P] [US1] Implement face ROI segmentation (sclera, conjunctiva, lips, skin regions via MediaPipe landmark indices → pixel masks) in `layer1_sense/visual/face_analyzer.py`
+- [x] T024 [US1] Implement color-based biomarker scoring (jaundice via HSV sclera, anemia via conjunctival redness ratio, cyanosis via lip blue dominance, dengue flush via periorbital R-channel, pallor via luminance) in `layer1_sense/visual/color_biomarker.py`
+- [x] T025 [US1] Implement MobileNetV3-Large multi-task classifier with 4 parallel heads (jaundice 4-class, anemia binary, cyanosis binary, dengue binary) and training function in `layer1_sense/visual/disease_classifier.py`
+- [x] T026 [US1] Implement `PRISMVisualPipeline` with `analyze_frame()`, `analyze_video()` (median aggregation), and cross-validation between color_biomarker and classifier outputs in `layer1_sense/visual/visual_pipeline.py`
+- [x] T027 [P] [US1] Write visual unit tests in `layer1_sense/tests/test_visual.py` — synthetic blank frame → no-disease baseline, face-detected frame → valid scores
 
 ### 3D: Cross-Modal Attention Fusion
 
-- [ ] T028 [US1] Implement `PRISMFusionModel` (4 modality encoders → 128-dim, learned modality embeddings, MultiheadAttention 4 heads, FFN, sigmoid multi-label classifier for 12 diseases) with missing-modality masking in `layer1_sense/fusion/cross_modal_fusion.py`
-- [ ] T029 [US1] Implement fusion training loop with synthetic data generation, MC-Dropout uncertainty (T=20 passes), and temperature scaling calibration in `layer1_sense/fusion/fusion_trainer.py`
-- [ ] T030 [US1] Write fusion tests in `layer1_sense/tests/test_fusion.py` — verify output shape (12,) ∈ [0,1], attention weights valid, ablation: fusion ≥ single modality, missing modality doesn't crash
+- [x] T028 [US1] Implement `PRISMFusionModel` (4 modality encoders → 128-dim, learned modality embeddings, MultiheadAttention 4 heads, FFN, sigmoid multi-label classifier for 12 diseases) with missing-modality masking in `layer1_sense/fusion/cross_modal_fusion.py`
+- [x] T029 [US1] Implement fusion training loop with synthetic data generation, MC-Dropout uncertainty (T=20 passes), and temperature scaling calibration in `layer1_sense/fusion/fusion_trainer.py`
+- [x] T030 [US1] Write fusion tests in `layer1_sense/tests/test_fusion.py` — verify output shape (12,) ∈ [0,1], attention weights valid, ablation: fusion ≥ single modality, missing modality doesn't crash
 
 ### 3E: End-to-End Integration
 
-- [ ] T031 [US1] Create end-to-end SENSE pipeline class `PRISMSensePipeline` in `layer1_sense/sense_pipeline.py` that orchestrates rPPG + Audio + Visual → Fusion → SenseResult, with parallel execution and total latency logging
-- [ ] T032 [US1] Write end-to-end integration test in `layer1_sense/tests/test_e2e.py` — dummy patient data → all 4 pipelines → fusion → assert output shape (12,) probs in [0,1], processing < 500ms on laptop
+- [x] T031 [US1] Create end-to-end SENSE pipeline class `PRISMSensePipeline` in `layer1_sense/sense_pipeline.py` that orchestrates rPPG + Audio + Visual → Fusion → SenseResult, with parallel execution and total latency logging
+- [x] T032 [US1] Write end-to-end integration test in `layer1_sense/tests/test_e2e.py` — dummy patient data → all 4 pipelines → fusion → assert output shape (12,) probs in [0,1], processing < 500ms on laptop
 
 **Checkpoint**: User Story 1 fully functional. A 30-second capture produces disease probabilities with uncertainty. Independently testable and demoable.
 
@@ -96,8 +96,8 @@
 
 **Independent Test**: Verify SenseResult JSON serialization matches the interface contract expected by downstream layers.
 
-- [ ] T033 [US2] Add JSON serialization/deserialization methods to all dataclasses in `layer1_sense/datatypes.py` — `to_dict()`, `from_dict()`, `to_json()` for SenseResult → Layer 2/3 interop
-- [ ] T034 [US2] Write contract validation test in `layer1_sense/tests/test_contracts.py` — assert SenseResult.to_dict() keys match the exact interface contract: `disease_probabilities`, `rppg`, `audio`, `visual`, `uncertainty`, `processing_time_ms`
+- [x] T033 [US2] Add JSON serialization/deserialization methods to all dataclasses in `layer1_sense/datatypes.py` — `to_dict()`, `from_dict()`, `to_json()` for SenseResult → Layer 2/3 interop
+- [x] T034 [US2] Write contract validation test in `layer1_sense/tests/test_contracts.py` — assert SenseResult.to_dict() keys match the exact interface contract: `disease_probabilities`, `rppg`, `audio`, `visual`, `uncertainty`, `processing_time_ms`
 
 **Checkpoint**: Layer 1 output contract validated against Layer 2/3 input expectations.
 
@@ -113,12 +113,12 @@
 
 **Purpose**: Export all trained models to TFLite for offline Android inference. Directly supports SC-002, SC-004, FR-008.
 
-- [ ] T035 Implement TFLite export pipeline for YAMNet cough classifier (SavedModel → FP16 TFLite) in `scripts/export_to_tflite.py`
-- [ ] T036 Add rPPG signal processor TFLite export (tf.signal-based FFT ops) to `scripts/export_to_tflite.py`
-- [ ] T037 Add MobileNetV3 visual classifier export (PyTorch → ONNX → TFLite via onnx-tf) to `scripts/export_to_tflite.py`
-- [ ] T038 Add fusion model INT8 quantized export with representative dataset to `scripts/export_to_tflite.py`
-- [ ] T039 Implement TFLite benchmark script (100 inference calls, mean/p95 latency, model size, accuracy vs original) in `scripts/benchmark_tflite.py`
-- [ ] T040 Create Android integration spec README with method signatures, input/output tensor shapes, and Kotlin code snippets in `android_integration/README.md`
+- [x] T035 Implement TFLite export pipeline for YAMNet cough classifier (SavedModel → FP16 TFLite) in `scripts/export_to_tflite.py`
+- [x] T036 Add rPPG signal processor TFLite export (tf.signal-based FFT ops) to `scripts/export_to_tflite.py`
+- [x] T037 Add MobileNetV3 visual classifier export (PyTorch → ONNX → TFLite via onnx-tf) to `scripts/export_to_tflite.py`
+- [x] T038 Add fusion model INT8 quantized export with representative dataset to `scripts/export_to_tflite.py`
+- [x] T039 Implement TFLite benchmark script (100 inference calls, mean/p95 latency, model size, accuracy vs original) in `scripts/benchmark_tflite.py`
+- [x] T040 Create Android integration spec README with method signatures, input/output tensor shapes, and Kotlin code snippets in `android_integration/README.md`
 - [ ] T041 Write TFLite validation tests in `layer1_sense/tests/test_tflite.py` — load each .tflite, run inference on test input, verify output matches original model within tolerance
 
 **Checkpoint**: All 4 TFLite models exported and validated. Combined size < 15MB.
