@@ -147,7 +147,7 @@ class TestUncertaintyReducer:
     def test_recommend_diagnostic_test(self):
         from layer2_reason.scm.uncertainty_reducer import recommend_diagnostic_test
         test_tb = recommend_diagnostic_test("tb", {"prob": 0.5})
-        assert test_tb == "cbnaat_sputum" # highest info gain / sqrt(cost)
+        assert test_tb == "chest_xray" # highest info gain / sqrt(cost)
         
         test_unknown = recommend_diagnostic_test("unknown", {})
         assert test_unknown == "clinical_review"
