@@ -1,3 +1,8 @@
+"""
+PRISM Platform — Celery Async Task Definitions
+Handles long-running ML inference pipeline via Redis-backed task queue.
+"""
+
 from celery import Celery
 import logging
 import time
