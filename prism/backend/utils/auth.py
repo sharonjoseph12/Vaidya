@@ -31,6 +31,15 @@ async def get_current_user(
         from backend.config import get_settings
         settings = get_settings()
 
+    # Development bypass for demo purposes
+    if settings.environment == "development" and token == "DEMO_TOKEN":
+        return {
+            "user_id": "00000000-0000-0000-0000-000000000000",
+            "email": "demo@prism.health",
+            "role": "authenticated",
+        }
+
+    try:
         # Supabase JWT uses the anon key as the secret for HS256
         payload = jwt.decode(
             token,

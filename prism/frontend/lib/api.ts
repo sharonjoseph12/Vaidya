@@ -16,8 +16,8 @@ class ApiError extends Error {
 
 function getAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("prism_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const token = localStorage.getItem("prism_token") || "DEMO_TOKEN";
+  return { Authorization: `Bearer ${token}` };
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
