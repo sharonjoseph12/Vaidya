@@ -3,6 +3,15 @@ from scipy import signal
 from typing import List, Dict, Tuple
 
 class PRISMrPPGProcessor:
+    """CHROM-based rPPG signal processor.
+
+    Implements the Chrominance (CHROM) method for extracting blood-volume-pulse
+    signals from RGB facial video. Includes bandpass filtering (0.7–4.0 Hz)
+    and multi-ROI signal fusion.
+
+    Reference: de Haan & Jeanne, "Robust Pulse Rate From Chrominance-Based rPPG", 2013.
+    """
+
     def __init__(self, fps: int = 30, lowcut: float = 0.7, highcut: float = 4.0):
         self.fps = fps
         self.lowcut = lowcut

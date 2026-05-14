@@ -4,6 +4,13 @@ from typing import List, Tuple
 from ..datatypes import CoughSegment
 
 class PRISMCoughDetector:
+    """Energy-based cough segment detector.
+
+    Uses short-term energy (RMS) thresholding to identify candidate cough
+    events in continuous audio. Each detected segment is returned with
+    timing and confidence metadata.
+    """
+
     def __init__(self, sample_rate: int = 16000, energy_threshold: float = 0.05, min_cough_duration: float = 0.2):
         self.sr = sample_rate
         self.energy_threshold = energy_threshold

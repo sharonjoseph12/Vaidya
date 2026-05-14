@@ -119,7 +119,7 @@
 - [x] T038 Add fusion model INT8 quantized export with representative dataset to `scripts/export_to_tflite.py`
 - [x] T039 Implement TFLite benchmark script (100 inference calls, mean/p95 latency, model size, accuracy vs original) in `scripts/benchmark_tflite.py`
 - [x] T040 Create Android integration spec README with method signatures, input/output tensor shapes, and Kotlin code snippets in `android_integration/README.md`
-- [ ] T041 Write TFLite validation tests in `layer1_sense/tests/test_tflite.py` — load each .tflite, run inference on test input, verify output matches original model within tolerance
+- [x] T041 Write TFLite validation tests in `layer1_sense/tests/test_tflite.py` — load each .tflite, run inference on test input, verify output matches original model within tolerance
 
 **Checkpoint**: All 4 TFLite models exported and validated. Combined size < 15MB.
 
@@ -129,12 +129,12 @@
 
 **Purpose**: Quality, documentation, performance hardening
 
-- [ ] T042 [P] Add docstrings and type hints to all public classes and methods across `layer1_sense/`
-- [ ] T043 [P] Create dataset download scripts in `scripts/download_coughvid.py` and `scripts/download_coswara.py`
-- [ ] T044 Run `quickstart.md` validation — execute the quickstart example end-to-end and verify it works
-- [ ] T045 [P] Add edge case handling: low-light fallback (audio/IMU only), high-noise audio warning, missing modality graceful degradation
-- [ ] T046 Profile full pipeline end-to-end and optimize any bottleneck exceeding latency targets (cough < 50ms, rPPG < 100ms, visual < 30ms, fusion < 10ms)
-- [ ] T047 Final model size audit — verify combined TFLite models < 15MB per SC-004
+- [x] T042 [P] Add docstrings and type hints to all public classes and methods across `layer1_sense/`
+- [x] T043 [P] Create dataset download scripts in `scripts/download_coughvid.py` and `scripts/download_coswara.py`
+- [x] T044 Run `quickstart.md` validation — execute the quickstart example end-to-end and verify it works
+- [x] T045 [P] Add edge case handling: low-light fallback (audio/IMU only), high-noise audio warning, missing modality graceful degradation
+- [x] T046 Profile full pipeline end-to-end and optimize any bottleneck exceeding latency targets (cough < 50ms, rPPG < 100ms, visual < 30ms, fusion < 10ms)
+- [x] T047 Final model size audit — verify combined TFLite models < 15MB per SC-004
 
 ---
 

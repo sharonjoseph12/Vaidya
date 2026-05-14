@@ -3,12 +3,25 @@ import cv2
 from typing import Dict, Tuple
 
 class PRISMROIExtractor:
+    """Preprocesses video frames and extracts mean RGB values from face ROIs.
+
+    Applies CLAHE contrast enhancement to handle variable lighting conditions
+    typical of smartphone-captured video.
+    """
+
     def __init__(self, apply_clahe: bool = True):
         self.apply_clahe = apply_clahe
         self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
-        """Applies CLAHE and basic white balancing"""
+        """Apply CLAHE contrast normalization on the L channel (LAB space).
+
+        Args:
+            frame: BGR image as ``(H, W, 3)`` uint8 array.
+
+        Returns:
+            Contrast-enhanced BGR frame.
+        """
         if not self.apply_clahe:
             return frame
             

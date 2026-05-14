@@ -4,6 +4,16 @@ from typing import Tuple, Dict, List
 from ..datatypes import VitalsResult
 
 class PRISMVitalsEstimator:
+    """Estimates cardiovascular vitals from processed BVP signals.
+
+    Computes: Heart Rate (Welch periodogram), HRV metrics (RMSSD, SDNN, LF/HF),
+    SpO2 (ratio-of-ratios), and Respiratory Rate (amplitude modulation).
+
+    Note:
+        SpO2 uses placeholder calibration coefficients (A=110, B=25).
+        Clinical deployment requires device-specific calibration curves.
+    """
+
     def __init__(self, fps: int = 30):
         self.fps = fps
 

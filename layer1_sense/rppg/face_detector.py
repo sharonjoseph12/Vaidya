@@ -6,6 +6,12 @@ from ..exceptions import FaceNotDetectedError
 from ..logger import logger
 
 class PRISMFaceDetector:
+    """MediaPipe FaceMesh-based face detector for rPPG ROI extraction.
+
+    Detects 478 facial landmarks and segments forehead/cheek ROIs
+    for downstream RGB signal extraction.
+    """
+
     def __init__(self, static_image_mode: bool = False, max_num_faces: int = 1):
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
@@ -25,7 +31,15 @@ class PRISMFaceDetector:
         }
 
     def get_landmarks(self, frame: np.ndarray) -> Optional[np.ndarray]:
-        """Returns 468 (or 478 if refined) landmarks as (N, 3) numpy array"""
+        """Detect facial landmarks from a BGR frame.
+
+        Args:
+            frame: BGR image as ``(H, W, 3)`` uint8 array.
+
+        Returns:
+            ``(N, 3)`` landmark coordinates in pixel space, or ``None``
+            if no face is detected.
+        """
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
         
