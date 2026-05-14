@@ -26,7 +26,8 @@ MANIFEST
 venv/
 .venv/
 ENV/
-env/
+/.env/
+/env/
 bin/
 lib/
 include/
@@ -46,6 +47,12 @@ etc/
 *.json
 data/
 samples/
+prism/PRISM_Audio_ML/public_dataset/
+prism/PRISM_Audio_ML/Coswara_Data/
+*.zip
+*.rar
+*.7z
+
 
 # OS
 .DS_Store

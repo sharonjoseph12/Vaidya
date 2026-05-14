@@ -1,61 +1,73 @@
+import os
 import numpy as np
-import tensorflow as tf
-import tensorflow_hub as hub
+import librosa
+import joblib
 from typing import Dict, List, Optional
 from ..logger import logger
 
 class PRISMCoughClassifier:
     def __init__(self, model_path: Optional[str] = None):
-        # Load YAMNet from TF Hub
+        # Default path to the trained XGBoost model
+        if model_path is None:
+            model_path = os.path.join(os.path.dirname(__file__), "models", "cough_xgboost_model.pkl")
+        
+        self.model_path = model_path
+        self.model = None
+        self.classes = ["Healthy", "Sick"] # Binary classification for now
+        
         try:
-            self.yamnet = hub.load('https://tfhub.dev/google/yamnet/1')
-            logger.info("Loaded YAMNet from TF Hub")
+            if os.path.exists(self.model_path):
+                self.model = joblib.load(self.model_path)
+                logger.info(f"Loaded PRISM XGBoost Cough Model from {self.model_path}")
+            else:
+                logger.warning(f"Cough model not found at {self.model_path}. Predict will return default probs.")
         except Exception as e:
-            logger.error(f"Failed to load YAMNet: {e}")
-            self.yamnet = None
+            logger.error(f"Failed to load XGBoost model: {e}")
+
+    def _extract_features(self, waveform: np.ndarray, sr: int = 16000) -> Optional[np.ndarray]:
+        """Extracts 13 MFCCs and 1 ZCR from a waveform (consistent with training)"""
+        try:
+            # Ensure waveform is float32
+            y = waveform.astype(np.float32)
             
-        self.classes = ["TB", "COVID", "Pneumonia", "Whooping", "Asthma", "COPD", "Healthy", "Uncertain"]
-        # Placeholder for custom classification head weights
-        self.custom_head = None 
+            # Extract features
+            mfccs_mean = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13).T, axis=0)
+            zcr_mean = np.mean(librosa.feature.zero_crossing_rate(y).T, axis=0)
+            
+            return np.hstack([mfccs_mean, zcr_mean])
+        except Exception as e:
+            logger.error(f"Feature extraction failed: {e}")
+            return None
 
     def predict(self, audio_segments: List[np.ndarray]) -> Dict[str, float]:
-        """Classifies an ensemble of cough segments"""
-        if not audio_segments or self.yamnet is None:
+        """Classifies an ensemble of cough segments using the XGBoost model"""
+        if not audio_segments or self.model is None:
+            # Return uniform probability if no data or no model
             return {cls: 1.0/len(self.classes) for cls in self.classes}
             
-        segment_probs = []
-        
+        segment_features = []
         for segment in audio_segments:
-            # YAMNet expects 16kHz mono audio in [-1, 1]
-            waveform = segment.astype(np.float32)
+            feat = self._extract_features(segment)
+            if feat is not None:
+                segment_features.append(feat)
+        
+        if not segment_features:
+            return {cls: 1.0/len(self.classes) for cls in self.classes}
             
-            # Run YAMNet
-            scores, embeddings, spectrogram = self.yamnet(waveform)
-            
-            # Average scores over time for the segment
-            mean_scores = tf.reduce_mean(scores, axis=0).numpy()
-            
-            # Map YAMNet respiratory classes to PRISM diseases
-            # 36: Breathing, 37: Wheeze, 42: Cough, 43: Throat clearing, 45: Sniff
-            breathing = float(mean_scores[36])
-            wheeze = float(mean_scores[37])
-            cough = float(mean_scores[42])
-            throat = float(mean_scores[43])
-            sniff = float(mean_scores[45])
-            
-            # Simple heuristic map for demo/offline logic
-            p_tb = cough * 0.8 + throat * 0.2
-            p_covid = cough * 0.6 + sniff * 0.4
-            p_pneumonia = cough * 0.7 + breathing * 0.3
-            p_whooping = cough * 0.9 + wheeze * 0.1
-            p_asthma = wheeze * 0.8 + cough * 0.2
-            p_copd = wheeze * 0.6 + breathing * 0.4
-            p_healthy = 1.0 - np.clip(cough + wheeze + breathing, 0.0, 1.0)
-            
-            raw_probs = np.array([p_tb, p_covid, p_pneumonia, p_whooping, p_asthma, p_copd, p_healthy, 0.1])
-            probs = raw_probs / (np.sum(raw_probs) + 1e-6)
-            segment_probs.append(probs)
-            
-        # Ensemble averaging
-        final_probs = np.mean(segment_probs, axis=0)
-        return {cls: float(prob) for cls, prob in zip(self.classes, final_probs)}
+        # Run prediction
+        X = np.array(segment_features)
+        # XGBoost predict_proba returns [P(Healthy), P(Sick)]
+        probs_matrix = self.model.predict_proba(X)
+        
+        # Ensemble averaging over segments
+        avg_probs = np.mean(probs_matrix, axis=0)
+        
+        return {
+            "healthy_prob": float(avg_probs[0]),
+            "sick_prob": float(avg_probs[1]),
+            # For backward compatibility with the 8-class schema if needed
+            "TB": float(avg_probs[1] * 0.4), # Placeholder weights
+            "COVID": float(avg_probs[1] * 0.3),
+            "Pneumonia": float(avg_probs[1] * 0.3)
+        }
+
