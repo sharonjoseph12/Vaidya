@@ -41,7 +41,9 @@ etc/
 *.pth
 *.ckpt
 *.weights
-dataset/
+**/public_dataset/**
+*.wav
+*.json
 data/
 samples/
 
