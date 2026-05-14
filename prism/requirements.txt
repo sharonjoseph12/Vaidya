@@ -1,0 +1,14 @@
+torch
+torchvision
+torchaudio
+torchdiffeq
+torchsde
+pytorch-lightning
+wandb
+einops
+stable-baselines3
+gymnasium
+pandas
+numpy
+scikit-learn
+pytest
