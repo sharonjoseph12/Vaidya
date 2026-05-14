@@ -1,54 +1,48 @@
-# PRISM Layer 1 (SENSE) Quickstart
+# Quickstart: Explainability & Reporting
 
-## Installation
+## Test Scenario 1: Generate SHAP Waterfall Plot
+**Goal**: Verify SHAP logic produces a valid matplotlib figure for Streamlit.
 
-1. Create a Python 3.11 virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+1. **Setup**:
+   ```python
+   import shap
+   import xgboost as xgb
+   model = xgb.XGBClassifier().load_model("models/sense/audio_model.json")
+   X_sample = ... # load sample
    ```
-
-2. Install the exact required dependencies:
-   ```bash
-   pip install -r requirements.txt
+2. **Execute**:
+   ```python
+   from app import show_shap
+   show_shap(model, X_sample, feature_names)
    ```
-   *(Note: Ensure your `requirements.txt` contains `mediapipe==0.10.9`, `opencv-python==4.9.0.80`, `torch==2.1.2`, `torchaudio==2.1.2`, `librosa==0.10.1`, `tensorflow==2.15.0`, etc. as specified in the plan)*
+3. **Verify**:
+   - Figure is rendered in Streamlit tab.
+   - Background colors match PRISM dark theme.
 
-3. (Optional) Install `praat-parselmouth` and `pyAudioAnalysis` for advanced voice biomarker extraction:
-   ```bash
-   pip install praat-parselmouth pyAudioAnalysis
+## Test Scenario 2: Generate PDF Report
+**Goal**: Verify a medical-grade PDF is generated in the root directory.
+
+1. **Execute**:
+   ```python
+   from app import generate_pdf_report
+   results = {
+       "sense": {"disease_probs": {"TB": 0.85, "COVID": 0.1}},
+       "causal": {"narrative": "Primary driver: Crowding Index..."},
+       "interventions": [{"name": "nutritional_support", "cost": 0}]
+   }
+   pdf_path = generate_pdf_report(results, "DEMO-001")
    ```
+2. **Verify**:
+   - `PRISM_Report_DEMO-001.pdf` exists.
+   - Contains header, primary diagnosis box, and intervention list.
 
-## Running the Pipeline
+## Test Scenario 3: Evaluate Model Performance
+**Goal**: Get real accuracy and AUC-ROC numbers for the pitch deck.
 
-To run a basic end-to-end extraction on sample files:
-
-```python
-from layer1_sense.fusion.cross_modal_fusion import PRISMFusionModel
-from layer1_sense.audio.audio_pipeline import PRISMAudioPipeline
-from layer1_sense.rppg.rppg_pipeline import PRISMrPPGPipeline
-from layer1_sense.visual.visual_pipeline import PRISMVisualPipeline
-
-# Initialize pipelines
-audio_pipe = PRISMAudioPipeline()
-rppg_pipe = PRISMrPPGPipeline()
-visual_pipe = PRISMVisualPipeline()
-fusion = PRISMFusionModel()
-
-# Process data
-audio_res = audio_pipe.full_analysis("sample_audio.wav")
-rppg_res = rppg_pipe.process_video("sample_video.mp4")
-visual_res = visual_pipe.analyze_video("sample_video.mp4")
-
-# Fuse (assuming proper tensor conversion methods exist)
-probs, uncertainty = fusion(audio_res, visual_res, rppg_res)
-print(probs)
-```
-
-## Running Tests
-
-To verify your environment is correctly configured:
-
-```bash
-pytest layer1_sense/tests/
-```
+1. **Execute**:
+   ```bash
+   uv run python scripts/evaluate_model.py
+   ```
+2. **Verify**:
+   - Classification report printed to console.
+   - AUC-ROC > 0.85 (target).
