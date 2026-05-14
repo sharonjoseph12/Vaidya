@@ -1,0 +1,8 @@
+data/raw/
+data/processed/
+layer2_reason/scm_models/*.pkl
+layer2_reason/vae_weights/
+layer2_reason/graphs/*.json
+*.pyc
+__pycache__/
+.pytest_cache/

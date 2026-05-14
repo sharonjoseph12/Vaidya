@@ -1,0 +1,120 @@
+# PRISM Layer 2 — Causal Engine Configuration
+# T003
+
+pcmci:
+  tau_min: 1
+  tau_max: 20
+  pc_alpha: 0.05
+  mci_alpha: 0.05
+  significance: analytic          # ParCorr analytic significance
+  min_effect_size: 0.1            # |MCI correlation| threshold
+
+disease_cohorts:
+  tb:
+    icd10_prefixes: ["A15", "A16", "A17", "A18", "A19"]
+    min_patients: 100
+  pneumonia:
+    icd10_prefixes: ["J12", "J13", "J14", "J15", "J16", "J17", "J18"]
+    min_patients: 100
+  sepsis:
+    icd10_prefixes: ["A40", "A41"]
+    min_patients: 100
+  heart_failure:
+    icd10_prefixes: ["I50"]
+    min_patients: 200
+  anemia:
+    icd10_prefixes: ["D50", "D51", "D52", "D53", "D64"]
+    min_patients: 200
+  dengue:
+    icd10_prefixes: ["A90", "A91"]
+    min_patients: 50
+  general:
+    icd10_prefixes: []             # All patients
+    min_patients: 500
+
+biomarker_itemids:
+  hemoglobin: 51222
+  wbc: 51301
+  creatinine: 50912
+  temperature: 223762
+  heart_rate: 220045
+  spo2: 220277
+  respiratory_rate: 220210
+  sbp: 220179
+  glucose: 220621
+  crp: 50889
+  bilirubin_total: 50885
+  platelet: 51265
+
+physiological_bounds:
+  hemoglobin:        {min: 3.0,  max: 20.0}
+  wbc:               {min: 0.5,  max: 100.0}
+  creatinine:        {min: 0.1,  max: 20.0}
+  temperature:       {min: 32.0, max: 42.5}
+  heart_rate:        {min: 20,   max: 300}
+  spo2:              {min: 50,   max: 100}
+  respiratory_rate:  {min: 4,    max: 60}
+  sbp:               {min: 50,   max: 250}
+  glucose:           {min: 20,   max: 600}
+  crp:               {min: 0.0,  max: 500.0}
+  bilirubin_total:   {min: 0.1,  max: 50.0}
+  platelet:          {min: 5,    max: 1500}
+
+feature_engineering:
+  lag_steps: 20
+  lag_interval_hours: 6
+  rolling_window_hours: 24
+  min_hours_data: 48
+  min_distinct_readings: 5
+  missing_interp_hours: 4       # linear interpolation threshold
+  missing_ffill_hours: 12       # forward-fill threshold
+
+causal_graph:
+  required_edges:
+    - [malnutrition, tb_susceptibility]
+    - [hemoglobin, fatigue]
+    - [wbc, infection_marker]
+    - [temperature, infection_marker]
+  forbidden_edges:
+    - [tb_susceptibility, malnutrition]
+
+scm:
+  production_model: GradientBoostingRegressor
+  debug_model: LinearRegression
+  gb_n_estimators: 100
+  gb_max_depth: 3
+
+dice:
+  method: genetic
+  proximity_weight: 1.5
+  diversity_weight: 1.0
+  n_counterfactuals: 5
+  actionable_features:
+    - nutrition_score
+    - bmi
+    - activity_level
+    - smoking_status
+    - water_quality
+    - crowding_index
+  feasibility_weights:
+    nutrition_score: 0.9
+    activity_level: 0.8
+    bmi: 0.7
+    water_quality: 0.6
+    smoking_status: 0.5
+    crowding_index: 0.2
+
+causal_vae:
+  input_dim: 15
+  latent_dim: 8
+  hidden_dim: 128
+  beta: 4.0
+  lambda_dag: 1.0
+  learning_rate: 0.001
+  batch_size: 256
+  epochs: 200
+
+performance:
+  full_analysis_target_ms: 200
+  batch_100_target_s: 15
+  lru_cache_size: 512
