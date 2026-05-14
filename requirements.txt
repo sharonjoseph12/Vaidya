@@ -23,7 +23,7 @@ onnxruntime==1.17.3
 catboost==1.2.3
 
 # Utilities & Testing
-pytest==8.1.1
+pytest>=8.0.0
 requests==2.31.0
 tqdm==4.66.2
 pydantic-settings==2.1.0
