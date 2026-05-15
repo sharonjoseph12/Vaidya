@@ -32,7 +32,7 @@ class PRISMFaceAnalyzer:
         mask = np.zeros((h, w), dtype=np.uint8)
         points = landmarks[indices][:, :2].astype(np.int32)
         hull = cv2.convexHull(points)
-        cv2.fillConvexPoly(mask, hull, 255)
+        cv2.fillConvexPoly(mask, hull, (255,))
         return mask
 
     def _get_roi_pixels(self, frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
@@ -43,10 +43,11 @@ class PRISMFaceAnalyzer:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb)
 
-        if not results.multi_face_landmarks:
+        landmarks_list = getattr(results, 'multi_face_landmarks', None)
+        if not landmarks_list:
             return None
-
-        face = results.multi_face_landmarks[0]
+            
+        face = landmarks_list[0]
         h, w = frame.shape[:2]
         landmarks = np.array([[lm.x * w, lm.y * h, lm.z * w] for lm in face.landmark])
 

@@ -53,6 +53,9 @@ prism/PRISM_Audio_ML/Coswara_Data/
 *.rar
 *.7z
 
+# Tracked finetuned stubs for PRISM evaluation (see scripts/bootstrap_presentation_artifacts.py)
+!prism/backend/core_ml/lstm_trajectory.pth
+!prism/backend/core_ml/prism_yamnet_torch.pt
 
 # OS
 .DS_Store

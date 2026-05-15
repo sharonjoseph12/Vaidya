@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import StatsOverview from "@/components/dashboard/StatsOverview";
 import PatientQueue from "@/components/dashboard/PatientQueue";
 import FederatedDashboard from "@/components/federated/FederatedDashboard";
@@ -23,20 +24,20 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-lg font-bold text-white mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <a href="/scan" className="block p-4 bg-blue-600/10 border border-blue-500/30 rounded-xl hover:bg-blue-600/20 transition group">
+                <Link href="/scan" className="block p-4 bg-blue-600/10 border border-blue-500/30 rounded-xl hover:bg-blue-600/20 transition group">
                   <div className="font-semibold text-blue-400 flex justify-between items-center">
                     <span>New Passive Scan 📷</span>
                     <span className="group-hover:translate-x-1 transition-transform">→</span>
                   </div>
                   <div className="text-sm text-gray-400 mt-1">Start a 30s multimodal assessment</div>
-                </a>
-                <a href="/patient/new" className="block p-4 bg-purple-600/10 border border-purple-500/30 rounded-xl hover:bg-purple-600/20 transition group">
+                </Link>
+                <Link href="/patient/new" className="block p-4 bg-purple-600/10 border border-purple-500/30 rounded-xl hover:bg-purple-600/20 transition group">
                   <div className="font-semibold text-purple-400 flex justify-between items-center">
                     <span>Register Patient 👥</span>
                     <span className="group-hover:translate-x-1 transition-transform">→</span>
                   </div>
                   <div className="text-sm text-gray-400 mt-1">Verify ABHA ID & fetch history</div>
-                </a>
+                </Link>
               </div>
             </div>
             

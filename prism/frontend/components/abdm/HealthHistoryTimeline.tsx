@@ -40,7 +40,7 @@ export default function HealthHistoryTimeline({ records }: HealthHistoryTimeline
       
       <div className="relative border-l border-gray-700 ml-3 space-y-6">
         {sortedRecords.map((record, idx) => (
-          <div key={idx} className="relative pl-6">
+          <div key={`${record.type}-${record.date}-${idx}`} className="relative pl-6">
             {/* Timeline dot */}
             <div className="absolute -left-3.5 top-1 w-7 h-7 bg-gray-800 rounded-full border-2 border-gray-700 flex items-center justify-center text-xs">
               {getIcon(record.type)}
@@ -65,8 +65,8 @@ export default function HealthHistoryTimeline({ records }: HealthHistoryTimeline
               
               {record.codes && record.codes.length > 0 && (
                 <div className="mt-2 flex gap-2 flex-wrap">
-                  {record.codes.map(c => (
-                    <span key={c} className="text-xs bg-gray-900 text-gray-400 px-2 py-0.5 rounded border border-gray-800">
+                  {record.codes.map((c, codeIdx) => (
+                    <span key={`${idx}-${codeIdx}-${c}`} className="text-xs bg-gray-900 text-gray-400 px-2 py-0.5 rounded border border-gray-800">
                       {c}
                     </span>
                   ))}

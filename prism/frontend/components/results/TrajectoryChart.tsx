@@ -38,8 +38,8 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
       <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
         Digital Twin Disease Trajectory
       </h3>
-      <div className="flex-1 w-full min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="flex-1 w-full min-h-[260px] min-w-0">
+        <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={260}>
           <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <XAxis 
               dataKey="month" 
@@ -58,10 +58,12 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
             <Tooltip
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
               labelFormatter={(label) => `Month ${label}`}
-              formatter={(value: number, name: string) => {
-                if (name === "baseline") return [formatPercent(value), "Without Intervention"];
-                if (name === "intervention") return [formatPercent(value), "With Intervention"];
-                return [value, name];
+              formatter={(value, name) => {
+                const n = typeof value === "number" ? value : Number(value) || 0;
+                const nm = String(name ?? "");
+                if (nm === "baseline") return [formatPercent(n), "Without Intervention"];
+                if (nm === "intervention") return [formatPercent(n), "With Intervention"];
+                return [String(value ?? ""), nm];
               }}
             />
             
@@ -70,16 +72,16 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
 
             {/* Confidence Bands */}
             {showConfidence && (
-              <>
-                <Area type="monotone" dataKey="baseHigh" stroke="none" fill="#ef4444" fillOpacity={0.05} />
-                <Area type="monotone" dataKey="baseLow" stroke="none" fill="#111827" fillOpacity={1} />
-                {showIntervention && (
-                  <>
-                    <Area type="monotone" dataKey="intHigh" stroke="none" fill="#22c55e" fillOpacity={0.05} />
-                    <Area type="monotone" dataKey="intLow" stroke="none" fill="#111827" fillOpacity={1} />
-                  </>
-                )}
-              </>
+              <Area key="baseHigh" type="monotone" dataKey="baseHigh" stroke="none" fill="#ef4444" fillOpacity={0.05} />
+            )}
+            {showConfidence && (
+              <Area key="baseLow" type="monotone" dataKey="baseLow" stroke="none" fill="#111827" fillOpacity={1} />
+            )}
+            {showConfidence && showIntervention && (
+              <Area key="intHigh" type="monotone" dataKey="intHigh" stroke="none" fill="#22c55e" fillOpacity={0.05} />
+            )}
+            {showConfidence && showIntervention && (
+              <Area key="intLow" type="monotone" dataKey="intLow" stroke="none" fill="#111827" fillOpacity={1} />
             )}
 
             {/* Main Lines */}

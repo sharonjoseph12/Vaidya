@@ -29,9 +29,9 @@ export default function ABHAVerification({ onVerified }: ABHAVerificationProps) 
         setStatus("error");
         setError("Invalid ABHA ID");
       }
-    } catch (err: any) {
+    } catch (err) {
       setStatus("error");
-      setError(err.message || "Verification failed");
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);
     }

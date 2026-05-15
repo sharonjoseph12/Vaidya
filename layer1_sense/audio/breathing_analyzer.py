@@ -13,7 +13,8 @@ class PRISMBreathingAnalyzer:
         audio_ds = signal.resample(audio, int(len(audio) * target_sr / self.sr))
         
         # Envelope extraction
-        envelope = np.abs(signal.hilbert(audio_ds))
+        analytic_signal = signal.hilbert(audio_ds)
+        envelope = np.abs(np.asarray(analytic_signal))
         envelope = signal.detrend(envelope)
         
         # Bandpass for breathing (0.1 - 1.0 Hz)

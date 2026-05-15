@@ -43,10 +43,11 @@ class PRISMFaceDetector:
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
         
-        if not results.multi_face_landmarks:
+        landmarks_list = getattr(results, 'multi_face_landmarks', None)
+        if not landmarks_list:
             return None
             
-        face_landmarks = results.multi_face_landmarks[0]
+        face_landmarks = landmarks_list[0]
         h, w, _ = frame.shape
         landmarks = np.array([[lm.x * w, lm.y * h, lm.z * w] for lm in face_landmarks.landmark])
         return landmarks
@@ -60,7 +61,7 @@ class PRISMFaceDetector:
             mask = np.zeros((h, w), dtype=np.uint8)
             points = landmarks[indices][:, :2].astype(np.int32)
             hull = cv2.convexHull(points)
-            cv2.fillConvexPoly(mask, hull, 255)
+            cv2.fillConvexPoly(mask, hull, (255,))
             masks[name] = mask
             
         return masks

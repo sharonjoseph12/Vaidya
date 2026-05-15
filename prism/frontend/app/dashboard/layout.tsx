@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { name: "Overview", path: "/dashboard", icon: "📊" },
     { name: "New Scan", path: "/scan", icon: "📷" },
-    { name: "Patients", path: "/patients", icon: "👥" },
+    { name: "Patients", path: "/dashboard/patients", icon: "👥" },
     { name: "Federated Learning", path: "/dashboard/fl", icon: "🌐" },
   ];
 

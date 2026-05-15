@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getResults } from "@/lib/api";
-import type { DiagnosticResult } from "@/lib/types";
+import { getResults, downloadReport } from "@/lib/api";
+import { isCompleteDiagnosticPayload, type DiagnosticResult } from "@/lib/types";
 
 // US1 Components
 import DiseaseProbabilityCard from "@/components/results/DiseaseProbabilityCard";
@@ -31,6 +31,7 @@ export default function PatientDetailPage() {
   
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   // Trajectory controls state
@@ -39,23 +40,72 @@ export default function PatientDetailPage() {
   const [horizon, setHorizon] = useState(12);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await getResults(id);
-        setResult(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to load results");
-      } finally {
+    let cancelled = false;
+    const intervalRef = { current: null as ReturnType<typeof setInterval> | null };
+    let attempts = 0;
+    const maxAttempts = 120;
+
+    async function poll() {
+      if (cancelled) return;
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        setError("Timed out waiting for analysis to finish.");
         setLoading(false);
+        setPendingMessage(null);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+      try {
+        const raw = await getResults(id);
+        if (cancelled) return;
+
+        if (!isCompleteDiagnosticPayload(raw)) {
+          setPendingMessage(raw.message);
+          setResult(null);
+          setLoading(false);
+          return;
+        }
+
+        setPendingMessage(null);
+        setResult(raw);
+        setLoading(false);
+        if (raw.status === "complete" || raw.status === "error") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load results");
+          setLoading(false);
+          setPendingMessage(null);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
       }
     }
-    loadData();
+
+    void poll();
+    intervalRef.current = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [id]);
 
-  if (loading) {
+  if (loading && !pendingMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-bg">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (pendingMessage && !result) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gradient-bg p-8">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
+        <p className="text-gray-300 text-center max-w-md">{pendingMessage}</p>
+        <p className="text-gray-500 text-sm mt-4">
+          Session <span className="font-mono">{id.slice(0, 8)}…</span>
+        </p>
       </div>
     );
   }
@@ -74,7 +124,12 @@ export default function PatientDetailPage() {
   return (
     <div className="min-h-screen gradient-bg p-6 md:p-10 text-gray-100 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
-        
+        {result.status === "error" && (
+          <div className="glass-card p-4 border border-red-500/40 text-red-200 text-sm">
+            This diagnostic session reported an error. Some sections may be empty or incomplete.
+          </div>
+        )}
+
         {/* Header (US1/US5) */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glass-card p-6 border-b border-blue-500/30">
           <div>
@@ -86,7 +141,21 @@ export default function PatientDetailPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <button 
+              onClick={async () => {
+                try {
+                  const blob = await downloadReport(id);
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `prism_report_${id.slice(0, 8)}.pdf`;
+                  a.click();
+                } catch (err) {
+                  alert(err instanceof Error ? err.message : "Failed to download report");
+                }
+              }}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-sm font-medium transition flex items-center gap-2"
+            >
               <span>📄</span> Download PDF
             </button>
             <button className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center gap-2">

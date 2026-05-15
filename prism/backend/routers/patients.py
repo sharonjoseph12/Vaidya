@@ -137,10 +137,10 @@ async def list_patients(
 
     patients = [
         PatientResponse(
-            id=row["id"],
+            id=row.get("id"),
             abha_id=row.get("abha_id"),
-            created_at=row["created_at"],
-            consent_given=row["consent_given"],
+            created_at=row.get("created_at"),
+            consent_given=row.get("consent_given"),
         )
         for row in (result.data or [])
     ]

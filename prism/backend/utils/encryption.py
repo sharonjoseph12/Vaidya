@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def _get_key() -> bytes:
-    """Load the AES-256 encryption key from settings."""
-    from backend.config import get_settings
-    settings = get_settings()
-    return base64.b64decode(settings.encryption_key)
+    """Load the AES-256 encryption key (prefer ``backend/.env`` over stale process env)."""
+    from backend.utils.encryption_key import load_aes_key_bytes_from_b64, raw_encryption_key_from_backend_env
+
+    return load_aes_key_bytes_from_b64(raw_encryption_key_from_backend_env())
 
 
 def encrypt_demographics(demographics: dict) -> bytes:
@@ -30,7 +30,13 @@ def encrypt_demographics(demographics: dict) -> bytes:
         Encrypted bytes (nonce + ciphertext) suitable for BYTEA column storage.
     """
     key = _get_key()
-    aesgcm = AESGCM(key)
+    try:
+        aesgcm = AESGCM(key)
+    except ValueError as exc:
+        raise ValueError(
+            f"AES-GCM rejected key material (decoded length {len(key)} bytes). "
+            "Regenerate with: openssl rand -base64 32 — and ensure prism/backend/.env is not overridden by a bad Windows env var."
+        ) from exc
     nonce = os.urandom(12)  # 96-bit nonce for GCM
     plaintext = json.dumps(demographics, ensure_ascii=False).encode("utf-8")
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
@@ -49,7 +55,13 @@ def decrypt_demographics(encrypted_data: bytes) -> dict:
         Decrypted demographics dictionary.
     """
     key = _get_key()
-    aesgcm = AESGCM(key)
+    try:
+        aesgcm = AESGCM(key)
+    except ValueError as exc:
+        raise ValueError(
+            f"AES-GCM rejected key material (decoded length {len(key)} bytes). "
+            "Check ENCRYPTION_KEY in prism/backend/.env."
+        ) from exc
     nonce = encrypted_data[:12]
     ciphertext = encrypted_data[12:]
     plaintext = aesgcm.decrypt(nonce, ciphertext, None)
