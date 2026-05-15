@@ -81,14 +81,23 @@ async def run_full_analysis(
         except Exception as e:
             logger.warning("Failed to upload video to storage: %s", e)
 
-    # Queue Celery task
-    from backend.workers.celery_tasks import celery_app
-    task = celery_app.send_task("run_prism_analysis", args=[{
+    # Run task directly for demo/dev (bypass Celery)
+    from backend.workers.celery_tasks import run_prism_analysis as run_task
+    # Use a thread or background task if we want it to be async, but for demo sync is fine
+    # or use asyncio.create_task if it's an async function (but it's a celery task which is sync)
+    class MockTask:
+        def __init__(self): self.id = str(uuid4())
+    task = MockTask()
+    
+    # Run in background so we can return the session ID immediately
+    import threading
+    thread = threading.Thread(target=run_task, args=( {
         "session_id": session_id,
         "audio_path": audio_path,
         "video_path": video_path,
         "patient_features": features,
-    }])
+    },))
+    thread.start()
 
     # Audit log
     await log_audit(
@@ -201,8 +210,12 @@ async def stream_results(session_id: str):
                 )
                 yield f"data: {event.model_dump_json()}\n\n"
                 last_status = current_status
+            else:
+                # Send heartbeat to keep connection alive
+                yield ": heartbeat\n\n"
 
             if current_status in ("complete", "error"):
+                await asyncio.sleep(0.5)  # Give browser time to process
                 break
 
             await asyncio.sleep(1)
@@ -211,6 +224,7 @@ async def stream_results(session_id: str):
         event_generator(),
         media_type="text/event-stream",
         headers={
+            "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",

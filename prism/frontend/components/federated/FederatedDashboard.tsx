@@ -10,10 +10,12 @@ export default function FederatedDashboard() {
   const [status, setStatus] = useState<FLStatus | null>(null);
   const [rounds, setRounds] = useState<FLRound[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoadError(null);
         const [statusData, roundsData] = await Promise.all([
           getFLStatus(),
           getFLRounds(20)
@@ -22,6 +24,9 @@ export default function FederatedDashboard() {
         setRounds(roundsData.rounds.reverse()); // Chronological for chart
       } catch (err) {
         console.error("Failed to load FL data", err);
+        setLoadError(
+          err instanceof Error ? err.message : "Could not load federated learning data. Is the API running?",
+        );
       } finally {
         setLoading(false);
       }
@@ -30,6 +35,14 @@ export default function FederatedDashboard() {
     const interval = setInterval(fetchData, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, []);
+
+  if (loadError) {
+    return (
+      <div className="glass-card p-6 border border-red-500/25 text-red-200 text-sm">
+        {loadError}
+      </div>
+    );
+  }
 
   if (loading || !status) {
     return <div className="glass-card p-6 animate-pulse bg-gray-800/50 h-64"></div>;
@@ -88,7 +101,7 @@ export default function FederatedDashboard() {
             <YAxis stroke="#94a3b8" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
             <Tooltip 
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value: number) => formatPercent(value)}
+              formatter={(value) => formatPercent(typeof value === "number" ? value : Number(value) || 0)}
             />
             <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
           </LineChart>

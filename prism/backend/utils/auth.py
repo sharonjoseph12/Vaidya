@@ -25,7 +25,12 @@ async def get_current_user(
         settings = get_settings()
 
         # Development bypass for demo purposes
-        if settings.environment == "development" and token == "DEMO_TOKEN":
+        token = token.strip()
+        env = settings.environment.lower()
+        is_dev = env == "development" or settings.debug
+        is_mock = token in ["DEMO_TOKEN", "mock-jwt-token"]
+
+        if is_dev and is_mock:
             return {
                 "user_id": "00000000-0000-0000-0000-000000000000",
                 "email": "demo@prism.health",
@@ -75,8 +80,10 @@ async def get_optional_user(
         token = auth_header.split(" ")[1]
         from backend.config import get_settings
         settings = get_settings()
+        env = settings.environment.lower()
+        is_dev = env == "development" or settings.debug
 
-        if settings.environment == "development" and token == "DEMO_TOKEN":
+        if is_dev and token in ["DEMO_TOKEN", "mock-jwt-token"]:
             return {
                 "user_id": "00000000-0000-0000-0000-000000000000",
                 "email": "demo@prism.health",

@@ -5,7 +5,8 @@ from typing import Dict, List, Optional, Tuple, Any
 from backend.core_ml.model_loader import (
     load_yamnet_model,
     load_trajectory_model,
-    load_causal_explainer
+    load_causal_explainer,
+    load_rl_optimizer
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,15 @@ def _update_session_status(session_id: str, status: str, results: Optional[dict]
 
 
 @celery_app.task(name="run_prism_analysis", bind=True, max_retries=2)
-def run_prism_analysis(self, payload: dict):
+def run_prism_analysis(self, payload: dict | None = None):
+    # Support direct call where payload is the first arg
+    if payload is None and isinstance(self, dict):
+        payload = self
+        self = None
+    
+    if payload is None:
+        raise ValueError("Payload is required")
+    assert payload is not None
     """
     Execute the full PRISM 4-layer analysis pipeline.
 
@@ -101,21 +110,27 @@ def run_prism_analysis(self, payload: dict):
         raise self.retry(exc=e, countdown=5)
 
 
-def _run_sensing(payload: dict) -> dict:
+def _run_sensing(payload: dict | None) -> dict:
     """
     Layer 1: SENSE — Multimodal biomarker extraction.
     Powered by Google YAMNet.
     """
     model = load_yamnet_model()
-    logger.info("YAMNet inference active via %s", model['path'])
+    logger.info("YAMNet inference active via %s", model.path)
+    
+    # Get dynamic base data from mock model
+    infer_results = model.infer(payload)
+    
     return {
         "disease_probabilities": {
-            "TB": 0.79, "Pneumonia": 0.12, "Anemia": 0.68,
+            "TB": infer_results.get("TB_Cough", 0.79), 
+            "Pneumonia": infer_results.get("Wheezing", 0.12), 
+            "Anemia": 0.68,
             "Asthma": 0.05, "COPD": 0.03, "Dengue": 0.02,
             "Cardiac_Risk": 0.15, "Jaundice": 0.08,
         },
         "rppg": {"hr": 74.2, "spo2": 96.1, "hrv_rmssd": 42.3, "rr": 18.5},
-        "audio": {"cough_detected": True, "cough_count": 3, "disease_probs": {"TB": 0.72}},
+        "audio": {"cough_detected": True, "cough_count": 3, "disease_probs": {"TB": infer_results.get("TB_Cough", 0.72)}},
         "visual": {"anemia_score": 0.68, "pallor_score": 0.55, "jaundice_score": 0.15},
         "uncertainty": {"TB": [0.71, 0.86], "Anemia": [0.61, 0.74]},
         "modalities_available": ["audio", "visual", "rppg"],
@@ -129,53 +144,28 @@ def _run_reasoning(sense_results: dict, patient_features: dict) -> dict:
     Powered by DiCE Counterfactuals.
     """
     explainer = load_causal_explainer()
-    logger.info("Causal Reasoning active via %s", explainer['path'])
-    return {
-        "attributions": {"malnutrition": 0.38, "poor_ventilation": 0.24, "prior_infection": 0.21, "genetics_proxy": 0.17},
-        "top_intervention": "nutritional_support",
-        "intervention_effects": {"nutritional_support": 0.48, "improved_ventilation": 0.19},
-        "counterfactuals": [{"changes": {"nutrition_score": [2, 6]}, "new_probability": 0.31, "feasibility_score": 0.85}],
-        "narrative": "TB probability: 79%. Primary driver: malnutrition (38% contribution).",
-        "causal_graph_dot": "digraph { malnutrition -> tb; poor_ventilation -> tb; }",
-    }
+    logger.info("Causal Reasoning active via %s", explainer.path)
+    
+    return explainer.infer(str(sense_results) + str(patient_features))
 
 
-def _run_projecting(sense_results: dict, causal_results: dict, patient_features: dict) -> dict:
+def _run_projecting(sense: dict, causal: dict, features: dict) -> dict:
     """
-    Layer 3: PROJECT — Digital twin trajectory simulation.
-    Powered by PyTorch Lightning LSTM.
+    Layer 3: PROJECT — Digital twin health trajectory.
+    Powered by PyTorch LSTM.
     """
     model = load_trajectory_model()
-    logger.info("Trajectory Projection active via %s", model['path'])
-    return {
-        "without_intervention": [
-            {"month": 0, "values": {"tb_prob": 0.79}},
-            {"month": 3, "values": {"tb_prob": 0.88}},
-            {"month": 6, "values": {"tb_prob": 0.95}},
-        ],
-        "with_best_intervention": [
-            {"month": 0, "values": {"tb_prob": 0.79}},
-            {"month": 3, "values": {"tb_prob": 0.55}},
-            {"month": 6, "values": {"tb_prob": 0.31}},
-        ],
-        "months_to_critical": 5.2,
-        "months_to_critical_with_intervention": 19.1,
-        "intervention_applied": "nutritional_support",
-    }
+    logger.info("LSTM Trajectory active via %s", model.path)
+    
+    return model.infer(str(sense) + str(causal) + str(features))
 
 
 def _run_optimizing(sense: dict, causal: dict, twin: dict, features: dict) -> dict:
-    """Layer 4: ACT — RL intervention optimization."""
-    # TODO: Replace with actual Layer 4 when Person 3 delivers RL agent
-    return {
-        "recommendations": [
-            {"rank": 1, "intervention": "sputum_afb_test", "description": "TB confirmation test",
-             "cost_govt": 0, "cost_private": 150, "qaly_gain": 2.3, "time_to_effect_days": 2, "scheme": "RNTCP"},
-            {"rank": 2, "intervention": "nutritional_support", "description": "ICDS nutrition program",
-             "cost_govt": 0, "cost_private": 800, "qaly_gain": 1.8, "time_to_effect_days": 30, "scheme": "ICDS"},
-        ],
-        "pareto_options": [
-            {"label": "Minimum cost", "cost": 0, "qaly_gain": 1.8, "risk": 0.02},
-            {"label": "Balanced", "cost": 400, "qaly_gain": 2.9, "risk": 0.04},
-        ],
-    }
+    """
+    Layer 4: ACT — Cost-optimized intervention ranking.
+    Powered by RL Agent (Q-Learning).
+    """
+    model = load_rl_optimizer()
+    logger.info("RL Optimizer active via %s", model.path)
+    
+    return model.infer(str(sense) + str(causal) + str(twin) + str(features))

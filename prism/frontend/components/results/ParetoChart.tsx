@@ -1,6 +1,6 @@
 "use client";
 
-import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import type { ParetoOption } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export default function ParetoChart({ options }: ParetoChartProps) {
       </h3>
       <p className="text-xs text-gray-500 mb-4">Pareto frontier of available interventions</p>
       
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full" style={{ minHeight: "180px" }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
             <XAxis 
@@ -44,10 +44,12 @@ export default function ParetoChart({ options }: ParetoChartProps) {
             <Tooltip 
               cursor={{ strokeDasharray: "3 3" }}
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value: any, name: string) => {
-                if (name === "Cost") return formatCurrency(value as number);
-                if (name === "Benefit") return `${value} QALY`;
-                return value;
+              formatter={(value, name) => {
+                if (value == null || value === "") return ["—", String(name ?? "")];
+                const label = String(name ?? "");
+                if (label === "Cost") return [formatCurrency(Number(value)), label];
+                if (label === "Benefit" || label === "qaly_gain") return [`${value} QALY`, label];
+                return [String(value), label];
               }}
             />
             <Scatter name="Options" data={options} fill="#3b82f6" shape="circle" />

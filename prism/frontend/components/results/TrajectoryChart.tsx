@@ -58,10 +58,12 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
             <Tooltip
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
               labelFormatter={(label) => `Month ${label}`}
-              formatter={(value: number, name: string) => {
-                if (name === "baseline") return [formatPercent(value), "Without Intervention"];
-                if (name === "intervention") return [formatPercent(value), "With Intervention"];
-                return [value, name];
+              formatter={(value, name) => {
+                const n = typeof value === "number" ? value : Number(value) || 0;
+                const nm = String(name ?? "");
+                if (nm === "baseline") return [formatPercent(n), "Without Intervention"];
+                if (nm === "intervention") return [formatPercent(n), "With Intervention"];
+                return [String(value ?? ""), nm];
               }}
             />
             

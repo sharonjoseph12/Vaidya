@@ -24,10 +24,10 @@ def show_shap(xgb_model, features, feature_names):
         # In multi-class, shap_values returns a list. Use index 1 (COVID) for demo.
         if isinstance(shap_vals, list):
             vals = shap_vals[1]
-            base = explainer.expected_value[1]
+            base = explainer.expected_value[1] if explainer.expected_value is not None else 0
         else:
             vals = shap_vals[0]
-            base = explainer.expected_value
+            base = explainer.expected_value if explainer.expected_value is not None else 0
             
         fig, ax = plt.subplots(figsize=(8, 4))
         fig.patch.set_facecolor('#0a0f1e')

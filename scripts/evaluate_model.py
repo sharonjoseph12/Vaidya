@@ -35,7 +35,7 @@ def evaluate_diagnostic_model():
     # 5. Metrics
     report = classification_report(y_test, y_pred, 
              target_names=['Healthy', 'COVID', 'Cough'])
-    auc = roc_auc_score(y_test, y_proba, multi_class='ovr')
+    auc = roc_auc_score(y_test, y_proba, multi_class='ovr')  # type: ignore
     
     print("\n=== Classification Report ===")
     print(report)

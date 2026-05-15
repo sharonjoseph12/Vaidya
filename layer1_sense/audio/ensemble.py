@@ -83,11 +83,13 @@ class PRISMAcousticEnsemble:
             waveform = waveform.astype(np.float32)
             
         # Run YAMNet
+        if self.yamnet is None:
+            raise ValueError("YAMNet model not initialized")
         scores, embeddings, spectrogram = self.yamnet(waveform)
         
         # Average embeddings over time segments
         yamnet_embedding = tf.reduce_mean(embeddings, axis=0)
-        return yamnet_embedding.numpy()
+        return np.asarray(yamnet_embedding.numpy())
 
     def predict(self, audio_data: np.ndarray) -> PRISMSenseResult:
         """
@@ -153,6 +155,6 @@ class PRISMAcousticEnsemble:
         """
         print(f"Cough now — recording {duration} seconds...")
         fs = 22050
-        audio = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='float32')
+        audio = sd.rec(duration * fs, samplerate=fs, channels=1, dtype='float32')
         sd.wait()
         return self.predict(audio.flatten())
