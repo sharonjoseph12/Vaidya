@@ -18,8 +18,8 @@ export default function ParetoChart({ options }: ParetoChartProps) {
       </h3>
       <p className="text-xs text-gray-500 mb-4">Pareto frontier of available interventions</p>
       
-      <div className="flex-1 w-full" style={{ minHeight: "180px" }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="flex-1 w-full min-h-[200px] min-w-0">
+        <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={220}>
           <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
             <XAxis 
               type="number" 

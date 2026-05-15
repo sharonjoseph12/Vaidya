@@ -12,9 +12,9 @@ export default function InterventionPlanDisplay({ plan }: InterventionPlanDispla
 
   return (
     <div className="space-y-4">
-      {plan.recommendations.map((rec) => (
+      {plan.recommendations.map((rec, index) => (
         <div 
-          key={rec.rank}
+          key={`${index}-${rec.rank}-${rec.intervention}`}
           className="glass-card p-4 hover:border-blue-500/30 transition-colors relative overflow-hidden group"
         >
           {/* Rank Ribbon */}

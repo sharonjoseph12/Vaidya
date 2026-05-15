@@ -1,13 +1,9 @@
 from celery import Celery
 import logging
+import shutil
 import time
 from typing import Dict, List, Optional, Tuple, Any
-from backend.core_ml.model_loader import (
-    load_yamnet_model,
-    load_trajectory_model,
-    load_causal_explainer,
-    load_rl_optimizer
-)
+from backend.core_ml.model_loader import load_yamnet_model
 
 logger = logging.getLogger(__name__)
 
@@ -107,30 +103,33 @@ def run_prism_analysis(self, payload: dict | None = None):
     except Exception as e:
         logger.error("Analysis failed for session %s: %s", session_id, e, exc_info=True)
         _update_session_status(session_id, "error")
-        raise self.retry(exc=e, countdown=5)
+        if self is not None and hasattr(self, "retry"):
+            raise self.retry(exc=e, countdown=5) from e
+        raise
 
 
-def _run_sensing(payload: dict | None) -> dict:
-    """
-    Layer 1: SENSE — Multimodal biomarker extraction.
-    Powered by Google YAMNet.
-    """
+def _legacy_run_sensing(payload: dict) -> dict:
+    """Previous mock YAMNet + fixed vitals (fallback)."""
     model = load_yamnet_model()
-    logger.info("YAMNet inference active via %s", model.path)
-    
-    # Get dynamic base data from mock model
+    logger.info("Fallback mock SENSE via %s", model.path)
     infer_results = model.infer(payload)
-    
     return {
         "disease_probabilities": {
-            "TB": infer_results.get("TB_Cough", 0.79), 
-            "Pneumonia": infer_results.get("Wheezing", 0.12), 
+            "TB": infer_results.get("TB_Cough", 0.79),
+            "Pneumonia": infer_results.get("Wheezing", 0.12),
             "Anemia": 0.68,
-            "Asthma": 0.05, "COPD": 0.03, "Dengue": 0.02,
-            "Cardiac_Risk": 0.15, "Jaundice": 0.08,
+            "Asthma": 0.05,
+            "COPD": 0.03,
+            "Dengue": 0.02,
+            "Cardiac_Risk": 0.15,
+            "Jaundice": 0.08,
         },
         "rppg": {"hr": 74.2, "spo2": 96.1, "hrv_rmssd": 42.3, "rr": 18.5},
-        "audio": {"cough_detected": True, "cough_count": 3, "disease_probs": {"TB": infer_results.get("TB_Cough", 0.72)}},
+        "audio": {
+            "cough_detected": True,
+            "cough_count": 3,
+            "disease_probs": {"TB": infer_results.get("TB_Cough", 0.72)},
+        },
         "visual": {"anemia_score": 0.68, "pallor_score": 0.55, "jaundice_score": 0.15},
         "uncertainty": {"TB": [0.71, 0.86], "Anemia": [0.61, 0.74]},
         "modalities_available": ["audio", "visual", "rppg"],
@@ -138,34 +137,95 @@ def _run_sensing(payload: dict | None) -> dict:
     }
 
 
+def _run_sensing(payload: dict | None) -> dict:
+    """
+    Layer 1: SENSE — multimodal biomarker extraction.
+
+    Uses ``layer1_sense.PRISMSensePipeline`` on files downloaded from Supabase Storage
+    when ``use_real_sense`` is true and paths are present; otherwise (or on failure)
+    falls back to the lightweight mock.
+    """
+    from backend.config import get_settings
+    from backend.services.scan_media import download_scan_files
+    from backend.services.real_sense import try_run_real_sense
+
+    if payload is None:
+        raise ValueError("payload required")
+
+    settings = get_settings()
+    use_real = getattr(settings, "use_real_sense", True)
+    session_id = str(payload.get("session_id", "unknown"))
+    audio_storage = payload.get("audio_path")
+    video_storage = payload.get("video_path")
+
+    tmp_dir: str | None = None
+    try:
+        if use_real and (audio_storage or video_storage):
+            local_audio, local_video, tmp_dir = download_scan_files(
+                session_id, audio_storage, video_storage
+            )
+            if local_audio or local_video:
+                real = try_run_real_sense(local_video, local_audio)
+                if real is not None:
+                    logger.info("Real SENSE pipeline completed for session %s", session_id)
+                    return real
+            else:
+                logger.warning(
+                    "No local media files for session %s (uploads missing or empty); using mock SENSE",
+                    session_id,
+                )
+        return _legacy_run_sensing(payload)
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _run_reasoning(sense_results: dict, patient_features: dict) -> dict:
     """
-    Layer 2: REASON — Causal attribution and counterfactuals.
-    Powered by DiCE Counterfactuals.
+    Layer 2: REASON — finetuned ``causal_explainer.pkl`` when loadable, else sense-derived heuristic.
     """
-    explainer = load_causal_explainer()
-    logger.info("Causal Reasoning active via %s", explainer.path)
-    
-    return explainer.infer(str(sense_results) + str(patient_features))
+    from backend.core_ml.model_loader import load_causal_explainer
+    from backend.services.pipeline_derived import build_causal_results
+
+    model = load_causal_explainer()
+    if getattr(model, "is_real", False) and hasattr(model, "explain"):
+        try:
+            out = model.explain(sense_results, patient_features)
+            logger.info("Causal reasoning via finetuned artifact %s", getattr(model, "path", ""))
+            return out
+        except Exception as e:
+            logger.warning("Causal artifact failed, using heuristic: %s", e)
+    out = build_causal_results(sense_results, patient_features)
+    logger.info("Causal reasoning derived from sense disease probabilities (heuristic)")
+    return out
 
 
 def _run_projecting(sense: dict, causal: dict, features: dict) -> dict:
     """
-    Layer 3: PROJECT — Digital twin health trajectory.
-    Powered by PyTorch LSTM.
+    Layer 3: PROJECT — finetuned ``lstm_trajectory.pth`` when loadable, else sense-derived heuristic.
     """
+    from backend.core_ml.model_loader import load_trajectory_model
+    from backend.services.pipeline_derived import build_twin_trajectory
+
     model = load_trajectory_model()
-    logger.info("LSTM Trajectory active via %s", model.path)
-    
-    return model.infer(str(sense) + str(causal) + str(features))
+    if getattr(model, "is_real", False) and hasattr(model, "infer_from_sense"):
+        try:
+            out = model.infer_from_sense(sense, causal, features)
+            logger.info("Twin trajectory via finetuned artifact %s", getattr(model, "path", ""))
+            return out
+        except Exception as e:
+            logger.warning("Trajectory artifact failed, using heuristic: %s", e)
+    out = build_twin_trajectory(sense, causal, features)
+    logger.info("Twin trajectory derived from sense probabilities (heuristic)")
+    return out
 
 
 def _run_optimizing(sense: dict, causal: dict, twin: dict, features: dict) -> dict:
     """
-    Layer 4: ACT — Cost-optimized intervention ranking.
-    Powered by RL Agent (Q-Learning).
+    Layer 4: ACT — intervention options scaled from sense + twin urgency.
     """
-    model = load_rl_optimizer()
-    logger.info("RL Optimizer active via %s", model.path)
-    
-    return model.infer(str(sense) + str(causal) + str(twin) + str(features))
+    from backend.services.pipeline_derived import build_intervention_plan
+
+    out = build_intervention_plan(sense, causal, twin, features)
+    logger.info("Intervention plan derived from sense + twin")
+    return out

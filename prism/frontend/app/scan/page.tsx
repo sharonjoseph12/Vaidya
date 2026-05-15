@@ -116,11 +116,11 @@ function ScanPageContent() {
       {pageState === "capture" && (
         <div className="flex flex-col items-center gap-8">
           <CameraCapture
-            key={captureKey}
+            key={`camera-${captureKey}`}
             onComplete={handleVideoComplete}
             onScanningStart={handleScanningStart}
           />
-          <AudioCapture key={captureKey} onComplete={handleAudioComplete} isRecording={isRecordingAudio} />
+          <AudioCapture key={`audio-${captureKey}`} onComplete={handleAudioComplete} isRecording={isRecordingAudio} />
 
           {videoBlob && (
             <button

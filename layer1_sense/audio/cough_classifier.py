@@ -42,32 +42,58 @@ class PRISMCoughClassifier:
     def predict(self, audio_segments: List[np.ndarray]) -> Dict[str, float]:
         """Classifies an ensemble of cough segments using the XGBoost model"""
         if not audio_segments or self.model is None:
-            # Return uniform probability if no data or no model
-            return {cls: 1.0/len(self.classes) for cls in self.classes}
-            
+            n = 8
+            u = 1.0 / n
+            return {
+                "TB": u,
+                "COVID": u,
+                "Pneumonia": u,
+                "Whooping": u,
+                "Asthma": u,
+                "COPD": u,
+                "Healthy": u,
+                "Uncertain": u,
+            }
+
         segment_features = []
         for segment in audio_segments:
             feat = self._extract_features(segment)
             if feat is not None:
                 segment_features.append(feat)
-        
+
         if not segment_features:
-            return {cls: 1.0/len(self.classes) for cls in self.classes}
-            
+            n = 8
+            u = 1.0 / n
+            return {
+                "TB": u,
+                "COVID": u,
+                "Pneumonia": u,
+                "Whooping": u,
+                "Asthma": u,
+                "COPD": u,
+                "Healthy": u,
+                "Uncertain": u,
+            }
+
         # Run prediction
         X = np.array(segment_features)
         # XGBoost predict_proba returns [P(Healthy), P(Sick)]
         probs_matrix = self.model.predict_proba(X)
-        
+
         # Ensemble averaging over segments
         avg_probs = np.mean(probs_matrix, axis=0)
-        
+
+        healthy = float(avg_probs[0])
+        sick = float(avg_probs[1])
+        # Binary model does not separate TB vs COVID: map sick mass to Uncertain, not fake disease splits.
         return {
-            "healthy_prob": float(avg_probs[0]),
-            "sick_prob": float(avg_probs[1]),
-            # For backward compatibility with the 8-class schema if needed
-            "TB": float(avg_probs[1] * 0.4), # Placeholder weights
-            "COVID": float(avg_probs[1] * 0.3),
-            "Pneumonia": float(avg_probs[1] * 0.3)
+            "TB": 0.0,
+            "COVID": 0.0,
+            "Pneumonia": 0.0,
+            "Whooping": 0.0,
+            "Asthma": 0.0,
+            "COPD": 0.0,
+            "Healthy": healthy,
+            "Uncertain": sick,
         }
 

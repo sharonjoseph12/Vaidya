@@ -103,7 +103,7 @@ export async function startAnalysis(
   features?: Record<string, unknown>,
 ): Promise<AnalysisStartResponse> {
   const formData = new FormData();
-  formData.append("patient_id", patientId);
+  formData.append("patient_id", patientId.trim());
   formData.append("patient_features", JSON.stringify(features || {}));
   if (audioFile) formData.append("audio_file", audioFile);
   if (videoFile) formData.append("video_file", videoFile);

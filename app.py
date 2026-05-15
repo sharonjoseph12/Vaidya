@@ -133,6 +133,10 @@ def main():
     st.title("PRISM: Intelligent Diagnostics")
     
     tab1, tab2 = st.tabs(["Patient Scan", "Population Health"])
+
+    with tab2:
+        st.header("Population Health Dashboard")
+        st.info("Population-level analytics coming soon. This tab will display aggregated disease trends, regional risk maps, and intervention effectiveness metrics.")
     
     with tab1:
         st.header("New Patient Assessment")

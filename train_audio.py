@@ -101,7 +101,6 @@ model = xgb.XGBClassifier(
     n_estimators=100, 
     max_depth=5, 
     learning_rate=0.1, 
-    use_label_encoder=False, 
     eval_metric='logloss',
     scale_pos_weight=ratio # Increases penalty for missing 'Sick' samples
 )

@@ -92,20 +92,26 @@ export default function FederatedDashboard() {
       </div>
 
       {/* Accuracy Chart */}
-      <div className="glass-card p-5 h-80">
+      <div className="glass-card p-5 min-h-[320px] min-w-0">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Model Convergence</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-            <XAxis dataKey="round" stroke="#94a3b8" tick={{fontSize: 12}} />
-            <YAxis stroke="#94a3b8" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value) => formatPercent(typeof value === "number" ? value : Number(value) || 0)}
-            />
-            <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="h-[280px] w-full min-w-0">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={280}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis dataKey="round" stroke="#94a3b8" tick={{fontSize: 12}} />
+                <YAxis stroke="#94a3b8" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
+                  formatter={(value) => formatPercent(typeof value === "number" ? value : Number(value) || 0)}
+                />
+                <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-gray-500 pt-8 text-center">No training rounds recorded yet.</p>
+          )}
+        </div>
       </div>
     </div>
   );

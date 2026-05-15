@@ -3,9 +3,10 @@ PRISM Platform — Diagnostics Endpoints
 Handles scan analysis submission, results retrieval, and SSE streaming.
 """
 
+from uuid import UUID, uuid4
+
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from uuid import uuid4
 import asyncio
 import json
 import logging
@@ -20,6 +21,15 @@ from backend.models.diagnostic_result import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _normalize_patient_id(patient_id: str) -> str:
+    """Canonical UUID string for DB filters (case-insensitive input)."""
+    s = (patient_id or "").strip()
+    try:
+        return str(UUID(s))
+    except ValueError:
+        return s
 
 
 @router.post("/analyze", response_model=AnalysisStartResponse, status_code=202)
@@ -38,10 +48,23 @@ async def run_full_analysis(
     """
     client = get_supabase_client()
 
-    # Validate patient exists
-    patient = client.table("patients").select("id").eq("id", patient_id).execute()
+    pid = _normalize_patient_id(patient_id)
+    patient = client.table("patients").select("id").eq("id", pid).execute()
     if not patient.data:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        from backend.config import get_settings
+
+        s = get_settings()
+        hint = ""
+        if s.environment.lower() == "development":
+            hint = (
+                " With the Supabase mock, patients are stored in prism/backend/.prism_mock_db.json "
+                "(or PRISM_MOCK_DB_JSON); delete that file to reset, or register the patient again."
+            )
+        logger.warning("Analyze: patient not found for id=%r (normalized=%r)", patient_id, pid)
+        raise HTTPException(
+            status_code=404,
+            detail=f"Patient not found for id={pid!s}.{hint}",
+        )
 
     # Parse patient features JSON
     try:
@@ -53,7 +76,7 @@ async def run_full_analysis(
     session_id = str(uuid4())
     session_data = {
         "id": session_id,
-        "patient_id": patient_id,
+        "patient_id": pid,
         "session_type": session_type,
         "status": "queued",
     }

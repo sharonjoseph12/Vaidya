@@ -131,7 +131,7 @@ class ParetoOption(BaseModel):
     label: str
     cost: float
     qaly_gain: float
-    risk: float
+    risk: float = 0.0
 
 
 class TestRecommendation(BaseModel):

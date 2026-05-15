@@ -6,6 +6,7 @@ Provides a configured Supabase client for all database operations.
 from functools import lru_cache
 from typing import Any
 import logging
+from uuid import UUID
 
 try:
     from supabase import create_client, Client
@@ -33,76 +34,148 @@ def get_supabase_client() -> Any:
         logger.info("Supabase client initialized for %s", settings.supabase_url)
         return client
     except Exception as e:
-        logger.warning("Supabase initialization failed, using mock client: %s", e)
-        # Simple mock object to allow the app to run without real Supabase
-        import time
-        mock_db_state = {}
-        
-        class MockTable:
-            def __init__(self, name):
-                self.name = name
-                self.current_id = None
-                self.insert_data = None
-                self.update_data = None
+        from backend.db import mock_supabase_persist as _msp
 
-            def select(self, *args, **kwargs): return self
-            def order(self, *args, **kwargs): return self
-            def limit(self, *args, **kwargs): return self
-            def range(self, *args, **kwargs): return self
-            def single(self, *args, **kwargs): return self
-            
-            def eq(self, column, value, *args, **kwargs):
-                if column == "id":
-                    self.current_id = value
+        logger.warning("Supabase initialization failed, using mock client: %s", e)
+        logger.warning(
+            "Supabase mock is active; row data is synced via %s (set PRISM_MOCK_DB_JSON to override).",
+            _msp.mock_db_json_path(),
+        )
+        # In-memory object storage (bucket -> path -> bytes) for scan-media downloads in dev
+        mock_storage_state: dict[str, dict[str, bytes]] = {}
+
+        class MockStorageBucket:
+            def __init__(self, bucket_name: str):
+                self._bucket = bucket_name
+
+            def upload(self, path: str, file: bytes | bytearray, file_options: dict | None = None):
+                data = bytes(file) if not isinstance(file, bytes) else file
+                mock_storage_state.setdefault(self._bucket, {})[path] = data
+                return {"path": path}
+
+            def download(self, path: str) -> bytes:
+                return mock_storage_state.get(self._bucket, {}).get(path, b"")
+
+        class MockStorageRoot:
+            def from_(self, bucket: str):
+                return MockStorageBucket(bucket)
+
+        class MockTable:
+            def __init__(self, name: str):
+                self.name = name
+                self._filters: list[tuple[str, str]] = []
+                self.insert_data: dict | None = None
+                self.update_data: dict | None = None
+                self._range: tuple[int, int] | None = None
+                self._order: tuple[str, bool] | None = None
+                self._limit: int | None = None
+                self._count_mode: str | None = None
+
+            def select(self, *args, **kwargs):
+                self._count_mode = kwargs.get("count")
                 return self
-                
+
+            def order(self, column: str, desc: bool = False, *args, **kwargs):
+                self._order = (column, desc)
+                return self
+
+            def limit(self, n: int, *args, **kwargs):
+                self._limit = n
+                return self
+
+            def range(self, start: int, end: int, *args, **kwargs):
+                self._range = (start, end)
+                return self
+
+            def single(self, *args, **kwargs):
+                return self
+
+            def eq(self, column: str, value, *args, **kwargs):
+                self._filters.append((column, str(value)))
+                return self
+
             def insert(self, data, *args, **kwargs):
-                self.insert_data = data
-                if "id" in data:
-                    mock_db_state[data["id"]] = data
+                self.insert_data = dict(data)
                 return self
-                
+
             def update(self, data, *args, **kwargs):
-                self.update_data = data
+                self.update_data = dict(data)
                 return self
-                
+
+            def _row_matches_filter(self, row: dict, col: str, val: str) -> bool:
+                rv, fv = row.get(col), val
+                if rv is None:
+                    return False
+                if col == "id" or col == "patient_id" or col.endswith("_id"):
+                    try:
+                        return UUID(str(rv)) == UUID(str(fv))
+                    except ValueError:
+                        pass
+                return str(rv) == str(fv)
+
+            def _filtered_rows(self, mock_tables: dict[str, dict[str, dict]]) -> list[dict]:
+                rows = list(mock_tables.get(self.name, {}).values())
+                for col, val in self._filters:
+                    rows = [r for r in rows if self._row_matches_filter(r, col, val)]
+                return rows
+
             def execute(self, *args, **kwargs):
-                class MockResponse:
-                    def __init__(self, data):
-                        self.data = data
-                        self.count = len(data)
-                
-                # Handle update execution
-                if self.update_data and self.current_id and self.current_id in mock_db_state:
-                    mock_db_state[self.current_id].update(self.update_data)
-                    return MockResponse([mock_db_state[self.current_id]])
-                    
-                # Handle select execution (list)
-                if not self.current_id:
-                    items = list(mock_db_state.values())
-                    if not items:
-                        items = [{
-                            "id": "550e8400-e29b-41d4-a716-446655440000", 
-                            "name": "Demo Patient", 
-                            "status": "active",
-                            "created_at": "2026-05-14T00:00:00Z",
-                            "consent_given": True,
-                            "round_number": 1,
-                            "participating_nodes": 5,
-                            "dp_epsilon_spent": 0.01
-                        }]
-                    return MockResponse(items)
-                
-                # Handle select execution (single)
-                if self.current_id and self.current_id in mock_db_state:
-                    return MockResponse([mock_db_state[self.current_id]])
-                    
-                # Default fallback
-                return MockResponse([])
+                from backend.db.mock_supabase_persist import mock_db_transaction
+                from datetime import datetime, timezone
+                import uuid as uuid_mod
+
+                with mock_db_transaction() as mock_tables:
+
+                    class MockResponse:
+                        def __init__(self, data: list, count: int | None = None):
+                            self.data = data
+                            self.count = count if count is not None else len(data)
+
+                    if self.insert_data is not None:
+                        row = dict(self.insert_data)
+                        if "id" not in row:
+                            row["id"] = str(uuid_mod.uuid4())
+                        row.setdefault(
+                            "created_at",
+                            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+                        )
+                        tbl = mock_tables.setdefault(self.name, {})
+                        tbl[str(row["id"])] = row
+                        return MockResponse([row])
+
+                    if self.update_data is not None:
+                        rows = self._filtered_rows(mock_tables)
+                        if len(rows) == 1:
+                            rows[0].update(self.update_data)
+                            return MockResponse([rows[0]])
+                        return MockResponse([])
+
+                    rows = self._filtered_rows(mock_tables)
+                    if self._order:
+                        col, desc = self._order
+
+                        def sort_key(r: dict):
+                            v = r.get(col)
+                            if isinstance(v, (int, float)):
+                                return v
+                            return str(v) if v is not None else ""
+
+                        rows = sorted(rows, key=sort_key, reverse=desc)
+
+                    total = len(rows)
+                    if self._range is not None:
+                        lo, hi = self._range
+                        rows = rows[lo : hi + 1]
+                    if self._limit is not None:
+                        rows = rows[: self._limit]
+
+                    count_out = total if self._count_mode == "exact" else len(rows)
+                    return MockResponse(rows, count=count_out)
 
         class MockClient:
             def __init__(self):
-                self.storage = type('obj', (object,), {'from_': lambda s: type('obj', (object,), {'upload': lambda p, b: True})})()
+                self.storage = MockStorageRoot()
+
             def table(self, name):
                 return MockTable(name)
         return MockClient()
