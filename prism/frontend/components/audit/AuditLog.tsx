@@ -39,7 +39,7 @@ export default function AuditLog({ pageSize = 20 }: AuditLogProps) {
     }, [page, pageSize]);
 
     useEffect(() => {
-        fetchLog();
+        setTimeout(() => fetchLog(), 0);
     }, [fetchLog]);
 
     const totalPages = Math.ceil(total / pageSize);

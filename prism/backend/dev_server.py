@@ -35,11 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from typing import Optional, Dict, Any
+
 # ============================================================
 # In-Memory Store
 # ============================================================
 
-PATIENTS = {
+PATIENTS: Dict[str, Any] = {
     "demo-patient-001": {
         "id": "demo-patient-001",
         "abha_id": "91-1234-5678-9012",
@@ -69,7 +71,7 @@ PATIENTS = {
     },
 }
 
-SESSIONS = {}
+SESSIONS: Dict[str, Any] = {}
 
 # ============================================================
 # Result Builder — realistic but NO hardcoded disease values
@@ -168,12 +170,12 @@ def build_result(session_id: str, patient_features: dict) -> dict:
                 disease_probs["Anemia"] = round(min(0.55, anemia_score), 2)
 
     # ── rPPG vitals for sense_results ────────────────────────────────────────
-    primary = max(disease_probs, key=disease_probs.get) if disease_probs else None
+    primary = max(disease_probs, key=lambda k: disease_probs[k]) if disease_probs else None
     confidence = disease_probs.get(primary, 0.0) if primary else 0.0
 
     # ── Causal results (only if we have a diagnosis) ─────────────────────────
     causal_results = None
-    if primary and confidence > 0.25:
+    if primary:
         causal_results = {
             "attributions": {
                 "malnutrition": round(random.uniform(0.25, 0.42), 2),
@@ -202,7 +204,7 @@ def build_result(session_id: str, patient_features: dict) -> dict:
 
     # ── Twin trajectory ───────────────────────────────────────────────────────
     twin_trajectory = None
-    if primary and confidence > 0.25:
+    if primary:
         twin_trajectory = {
             "without_intervention": [
                 {"month": m, "values": {f"{primary.lower().replace(' ', '_')}_prob": min(0.99, confidence + m * 0.022)}}
@@ -395,7 +397,7 @@ async def analyze(
 
     if patient_id in PATIENTS:
         PATIENTS[patient_id]["last_session_date"] = datetime.now(timezone.utc).isoformat()
-        PATIENTS[patient_id]["sessions_count"] = PATIENTS[patient_id].get("sessions_count", 0) + 1
+        PATIENTS[patient_id]["sessions_count"] = int(PATIENTS[patient_id].get("sessions_count", 0)) + 1
 
     logger.info("Analysis queued: session=%s patient=%s", session_id, patient_id)
     return {"session_id": session_id, "task_id": f"task-{uuid4().hex[:8]}", "status": "queued", "estimated_time_seconds": 8}
@@ -472,6 +474,13 @@ async def submit_review(session_id: str, body: dict):
     if session_id in SESSIONS:
         SESSIONS[session_id]["review_status"] = "approved" if body.get("approved") else "overridden"
     return {"status": "approved" if body.get("approved") else "overridden", "session_id": session_id}
+
+@app.get("/api/v1/diagnostics/report/{session_id}/pdf")
+async def download_report_pdf(session_id: str):
+    pdf_content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Resources <<\n  /Font <<\n    /F1 4 0 R\n  >>\n>>\n/Contents 5 0 R\n>>\nendobj\n4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\n5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 24 Tf\n100 700 Td\n(PRISM Dev Report) Tj\nET\nendstream\nendobj\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF"
+    from fastapi.responses import StreamingResponse
+    import io
+    return StreamingResponse(io.BytesIO(pdf_content), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=prism_report_{session_id[:8]}.pdf"})
 
 
 # ============================================================

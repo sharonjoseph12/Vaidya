@@ -47,7 +47,7 @@ app = FastAPI(
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"] if settings.environment == "development" else settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,17 +79,17 @@ app.include_router(federated.router, prefix="/api/v1/federated", tags=["federate
 
 
 # --- Health Check ---
-@app.get("/health", tags=["system"])
+@app.get("/api/v1/health", tags=["system"])
 async def health_check():
     """Health check endpoint — no auth required."""
     return {
-        "status": "healthy",
+        "status": "ok",
         "version": settings.app_version,
         "service": "prism-api",
     }
 
 
-@app.get("/health/sense", tags=["system"])
+@app.get("/api/v1/health/sense", tags=["system"])
 async def health_sense():
     """Layer 1 real SENSE readiness — no auth required.
 
@@ -106,7 +106,7 @@ async def health_sense():
     return body
 
 
-@app.get("/health/ml", tags=["system"])
+@app.get("/api/v1/health/ml", tags=["system"])
 async def health_ml():
     """Finetuned ``core_ml`` artifacts (YAMNet .h5, LSTM .pth, causal .pkl) — no auth."""
     return ml_stack_status()

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = False
     environment: str = Field(default="development", description="development | staging | production")
+    port: int = 8000
 
     # --- Supabase ---
     supabase_url: str = Field(..., description="Supabase project URL")

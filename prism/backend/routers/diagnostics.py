@@ -104,23 +104,14 @@ async def run_full_analysis(
         except Exception as e:
             logger.warning("Failed to upload video to storage: %s", e)
 
-    # Run task directly for demo/dev (bypass Celery)
-    from backend.workers.celery_tasks import run_prism_analysis as run_task
-    # Use a thread or background task if we want it to be async, but for demo sync is fine
-    # or use asyncio.create_task if it's an async function (but it's a celery task which is sync)
-    class MockTask:
-        def __init__(self): self.id = str(uuid4())
-    task = MockTask()
-    
-    # Run in background so we can return the session ID immediately
-    import threading
-    thread = threading.Thread(target=run_task, args=( {
+    # Dispatch task to Celery worker
+    from backend.workers.celery_tasks import run_prism_analysis
+    task = run_prism_analysis.delay({
         "session_id": session_id,
         "audio_path": audio_path,
         "video_path": video_path,
         "patient_features": features,
-    },))
-    thread.start()
+    })
 
     # Audit log
     await log_audit(

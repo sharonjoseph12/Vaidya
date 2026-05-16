@@ -1,6 +1,5 @@
 {
-  "venvPath": "c:\\Users\\LENOVO\\Vaidya\\Vaidya",
-  "venv": ".venv",
+  "pythonPath": "C:\\Python314\\python.exe",
   "extraPaths": [
     ".",
     "prism"

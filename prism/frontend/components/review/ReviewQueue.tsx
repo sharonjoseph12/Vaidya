@@ -27,7 +27,7 @@ export default function ReviewQueue() {
     }, []);
 
     useEffect(() => {
-        fetchReviews();
+        setTimeout(() => fetchReviews(), 0);
         const interval = setInterval(fetchReviews, 30000);
         return () => clearInterval(interval);
     }, [fetchReviews]);

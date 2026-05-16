@@ -16,7 +16,6 @@ export default function FederatedPage() {
   const [nodes, setNodes] = useState<FLNode[]>([]);
   const [rounds, setRounds] = useState<FLRound[]>([]);
   const [modelVersions, setModelVersions] = useState<ModelVersion[]>([]);
-  const [loadingStatus, setLoadingStatus] = useState(true);
   const [loadingNodes, setLoadingNodes] = useState(true);
   const [loadingRounds, setLoadingRounds] = useState(true);
   const [loadingVersions, setLoadingVersions] = useState(true);
@@ -27,8 +26,6 @@ export default function FederatedPage() {
       setStatus(s);
     } catch (err) {
       console.error("FL status error", err);
-    } finally {
-      setLoadingStatus(false);
     }
   }, []);
 
@@ -69,10 +66,12 @@ export default function FederatedPage() {
   }, []);
 
   useEffect(() => {
-    fetchStatus();
-    fetchNodes();
-    fetchRounds();
-    fetchVersions();
+    setTimeout(() => {
+      fetchStatus();
+      fetchNodes();
+      fetchRounds();
+      fetchVersions();
+    }, 0);
 
     // Poll status every 10s, nodes every 30s
     const statusInterval = setInterval(fetchStatus, 10000);
