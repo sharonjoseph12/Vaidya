@@ -137,12 +137,12 @@ export default function CoughDetectionPanel({ isRecording, audioAnalyser }: Coug
     // React to isRecording + analyserNode changes
     useEffect(() => {
         if (!isRecording) {
-            stopDrawing();
+            setTimeout(() => stopDrawing(), 0);
             return;
         }
         if (isRecording && audioAnalyser) {
             cancelAnimationFrame(animFrameRef.current); // cancel any previous loop
-            startDrawing(audioAnalyser);
+            setTimeout(() => startDrawing(audioAnalyser), 0);
         }
         return () => cancelAnimationFrame(animFrameRef.current);
     }, [isRecording, audioAnalyser, startDrawing, stopDrawing]);

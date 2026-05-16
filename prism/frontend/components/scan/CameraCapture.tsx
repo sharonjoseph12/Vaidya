@@ -49,6 +49,7 @@ export default function CameraCapture({ onComplete, onScanningStart, onStartReco
       setErrorDetail(e instanceof Error ? e.message : "Camera error");
       setState("ERROR");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startRecording = useCallback(() => {
@@ -86,6 +87,7 @@ export default function CameraCapture({ onComplete, onScanningStart, onStartReco
     setState("SCANNING");
     onScanningStart?.();
     if (onStartRecording) onStartRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duration, onComplete, onScanningStart, onStartRecording]);
 
   useEffect(() => {
@@ -115,6 +117,7 @@ export default function CameraCapture({ onComplete, onScanningStart, onStartReco
       stream?.getTracks().forEach((t) => t.stop());
       if (video) video.srcObject = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ringColor =

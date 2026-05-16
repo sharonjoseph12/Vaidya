@@ -37,15 +37,17 @@ def _update_session_status(session_id: str, status: str, results: Optional[dict]
 
 
 @celery_app.task(name="run_prism_analysis", bind=True, max_retries=2)
-def run_prism_analysis(self, payload: dict | None = None):
-    # Support direct call where payload is the first arg
-    if payload is None and isinstance(self, dict):
-        payload = self
-        self = None
-    
+def run_prism_analysis(self_or_payload, payload: dict | None = None):
+    """Support both Celery (self, payload) and direct call (payload,)."""
+    if payload is None:
+        # Called directly: self_or_payload IS the payload
+        payload = self_or_payload
+        celery_self = None
+    else:
+        celery_self = self_or_payload
+
     if payload is None:
         raise ValueError("Payload is required")
-    assert payload is not None
     """
     Execute the full PRISM 4-layer analysis pipeline.
 
@@ -103,8 +105,8 @@ def run_prism_analysis(self, payload: dict | None = None):
     except Exception as e:
         logger.error("Analysis failed for session %s: %s", session_id, e, exc_info=True)
         _update_session_status(session_id, "error")
-        if self is not None and hasattr(self, "retry"):
-            raise self.retry(exc=e, countdown=5) from e
+        if celery_self is not None and hasattr(celery_self, "retry"):
+            raise celery_self.retry(exc=e, countdown=5) from e
         raise
 
 

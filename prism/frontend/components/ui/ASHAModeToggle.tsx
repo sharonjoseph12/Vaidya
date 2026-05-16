@@ -13,7 +13,7 @@ export default function ASHAModeToggle({ className = "" }: ASHAModeToggleProps) 
         if (typeof window === "undefined") return;
         const stored = localStorage.getItem("prism_asha_mode");
         const isEnabled = stored === "true";
-        setEnabled(isEnabled);
+        setTimeout(() => setEnabled(isEnabled), 0);
         document.body.setAttribute("data-asha", isEnabled ? "true" : "false");
     }, []);
 

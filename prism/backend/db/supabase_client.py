@@ -27,6 +27,8 @@ def get_supabase_client() -> Any:
     settings = get_settings()
 
     try:
+        if "placeholder" in settings.supabase_url.lower():
+            raise ValueError("Placeholder URL detected, forcing mock fallback")
         client = create_client( # type: ignore
             supabase_url=settings.supabase_url,
             supabase_key=settings.supabase_service_key,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, Suspense, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import CameraCapture from "@/components/scan/CameraCapture";
 import AudioCapture from "@/components/scan/AudioCapture";
@@ -19,7 +19,7 @@ import { isUuid } from "@/lib/utils";
 type PageState = "questionnaire" | "capture" | "processing" | "results" | "error";
 
 function ScanPageContent() {
-  const router = useRouter();
+
   const searchParams = useSearchParams();
   const patientIdRaw = searchParams.get("patientId")?.trim() ?? "demo-patient-id";
   const patientId = useMemo(
@@ -103,7 +103,7 @@ function ScanPageContent() {
             try {
               const responseData = await getResults(response.session_id);
               let result: DiagnosticResult | null = null;
-              if ("status" in responseData && responseData.status === "completed") {
+              if ("status" in responseData && responseData.status === "complete") {
                 result = responseData as DiagnosticResult;
               } else if (!("status" in responseData)) {
                 result = responseData as DiagnosticResult;

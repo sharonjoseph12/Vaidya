@@ -55,8 +55,10 @@ export default function LiveVitalsPanel({ videoRef, isRecording, onVitalsUpdate 
             if (frameTimerRef.current) clearInterval(frameTimerRef.current);
             if (computeTimerRef.current) clearInterval(computeTimerRef.current);
             processorRef.current?.reset();
-            setVitals(null);
-            setFramesCollected(0);
+            setTimeout(() => {
+                setVitals(null);
+                setFramesCollected(0);
+            }, 0);
             return;
         }
 

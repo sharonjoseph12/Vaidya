@@ -100,11 +100,11 @@ export default function ScanQualityIndicator({
     const frameRef = useRef<number>(0);
     const lastSampleRef = useRef<number>(0);
 
-    const sample = useCallback(() => {
+    const sample = useCallback(function sampleFn() {
         const now = Date.now();
         // Sample at ~5fps to avoid blocking
         if (now - lastSampleRef.current < 200) {
-            frameRef.current = requestAnimationFrame(sample);
+            frameRef.current = requestAnimationFrame(sampleFn);
             return;
         }
         lastSampleRef.current = now;
@@ -132,7 +132,7 @@ export default function ScanQualityIndicator({
         setTips(t);
         onQualityChange?.(s);
 
-        frameRef.current = requestAnimationFrame(sample);
+        frameRef.current = requestAnimationFrame(sampleFn);
     }, [videoRef, analyserNode, onQualityChange]);
 
     useEffect(() => {

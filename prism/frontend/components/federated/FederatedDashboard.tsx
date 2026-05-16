@@ -96,26 +96,20 @@ export default function FederatedDashboard() {
       </div>
 
       {/* Accuracy Chart */}
-      <div className="glass-card p-5 min-h-[320px] min-w-0">
+      <div className="glass-card p-5 h-80">
         <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: "var(--text-secondary)" }}>Model Convergence</h3>
-        <div className="h-[280px] w-full min-w-0">
-          {chartData.length > 0 ? (
-            <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={280}>
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="round" stroke="var(--text-secondary)" tick={{fontSize: 12}} />
-                <YAxis stroke="var(--text-secondary)" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", borderRadius: "8px" }}
-                  formatter={(value) => formatPercent(typeof value === "number" ? value : Number(value) || 0)}
-                />
-                <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm pt-8 text-center" style={{ color: "var(--text-muted)" }}>No training rounds recorded yet.</p>
-          )}
-        </div>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="round" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
+            <YAxis stroke="var(--text-secondary)" tick={{ fontSize: 12 }} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", borderRadius: "8px" }}
+              formatter={(value) => formatPercent(value as number)}
+            />
+            <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

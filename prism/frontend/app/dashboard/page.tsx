@@ -34,7 +34,7 @@ export default function DashboardPage() {
               <h3 className="text-base font-bold mb-4" style={{ color: "var(--text)" }}>Quick Actions</h3>
               <div className="space-y-2 flex-1">
                 {quickActions.map(({ href, icon, label, desc, accent }) => (
-                  <a
+                  <Link
                     key={href}
                     href={href}
                     className="block p-3 rounded-xl transition-all group hover:scale-[1.01]"
@@ -50,7 +50,7 @@ export default function DashboardPage() {
                       <span className="group-hover:translate-x-1 transition-transform text-xs">→</span>
                     </div>
                     <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{desc}</div>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>

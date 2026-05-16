@@ -30,6 +30,11 @@ const RISK_BADGE: Record<string, string> = {
     low: "bg-green-500/20 text-green-400 border-green-500/40",
 };
 
+const SortIcon = ({ field, sortField, sortDir }: { field: SortField, sortField: SortField, sortDir: SortDir }) => {
+    if (sortField !== field) return <span className="ml-1" style={{ color: "var(--text-muted)" }}>↕</span>;
+    return <span className="text-blue-400 ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
+};
+
 export default function PatientManagementTable({ onStatsChange }: PatientManagementTableProps) {
     const router = useRouter();
     const [data, setData] = useState<PatientList | null>(null);
@@ -91,7 +96,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
     }, [page, debouncedSearch, riskFilter, sortField, sortDir, onStatsChange]);
 
     useEffect(() => {
-        fetchPatients();
+        setTimeout(() => fetchPatients(), 0);
     }, [fetchPatients]);
 
     const handleSort = (field: SortField) => {
@@ -135,10 +140,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
         URL.revokeObjectURL(url);
     };
 
-    const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) return <span className="ml-1" style={{ color: "var(--text-muted)" }}>↕</span>;
-        return <span className="text-blue-400 ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
-    };
+
 
     const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 
@@ -234,7 +236,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
                                     onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
                                     onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
                                 >
-                                    Name <SortIcon field="name" />
+                                    Name <SortIcon field="name" sortField={sortField} sortDir={sortDir} />
                                 </th>
                                 <th className="px-4 py-3">ABHA / Location</th>
                                 <th className="px-4 py-3">Risk</th>
@@ -244,7 +246,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
                                     onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
                                     onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
                                 >
-                                    Sessions <SortIcon field="sessions_count" />
+                                    Sessions <SortIcon field="sessions_count" sortField={sortField} sortDir={sortDir} />
                                 </th>
                                 <th
                                     className="px-4 py-3 cursor-pointer transition-colors"
@@ -252,7 +254,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
                                     onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
                                     onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
                                 >
-                                    Last Scan <SortIcon field="last_scan" />
+                                    Last Scan <SortIcon field="last_scan" sortField={sortField} sortDir={sortDir} />
                                 </th>
                                 <th className="px-4 py-3 text-right">Actions</th>
                             </tr>
