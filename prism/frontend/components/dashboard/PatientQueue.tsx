@@ -10,11 +10,20 @@ export default function PatientQueue() {
   const router = useRouter();
   const [data, setData] = useState<PatientList | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     getPatients(1, 10)
-      .then(setData)
-      .catch(console.error)
+      .then((list) => {
+        setLoadError(null);
+        setData(list);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoadError(
+          err instanceof Error ? err.message : "Could not load patients. Is the API running?",
+        );
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,7 +49,11 @@ export default function PatientQueue() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {data?.patients.length === 0 ? (
+        {loadError ? (
+          <div className="h-full flex flex-col items-center justify-center text-red-300 text-sm px-4 text-center">
+            {loadError}
+          </div>
+        ) : (data?.patients?.length ?? 0) === 0 ? (
           <div className="h-full flex flex-col items-center justify-center" style={{ color: "var(--text-muted)" }}>
             <div className="text-4xl mb-2">📋</div>
             <p className="text-sm">No patients in queue</p>
@@ -55,11 +68,11 @@ export default function PatientQueue() {
                 <th className="px-4 py-3 rounded-tl-lg">ID</th>
                 <th className="px-4 py-3">ABHA / Demographics</th>
                 <th className="px-4 py-3">Last Scan</th>
-                <th className="px-4 py-3 text-right rounded-tr-lg">Action</th>
+                <th className="px-4 py-3 text-right rounded-tr-lg">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {data?.patients.map((p) => (
+              {data?.patients?.map((p) => (
                 <tr
                   key={p.id}
                   className="border-b transition-colors group cursor-pointer"
@@ -88,7 +101,8 @@ export default function PatientQueue() {
                   </td>
                   <td className="px-4 py-4 text-right flex justify-end gap-2">
                     <button
-                      onClick={(e) => { e.stopPropagation(); router.push(`/scan?patientId=${p.id}`); }}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); router.push(`/scan?patientId=${encodeURIComponent(p.id)}`); }}
                       className="px-2 py-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 rounded text-xs transition"
                     >
                       Scan 📷

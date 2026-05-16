@@ -40,7 +40,7 @@ export default function HealthHistoryTimeline({ records }: HealthHistoryTimeline
 
       <div className="relative ml-3 space-y-6 border-l" style={{ borderColor: "var(--border)" }}>
         {sortedRecords.map((record, idx) => (
-          <div key={idx} className="relative pl-6">
+          <div key={`${record.type}-${record.date}-${idx}`} className="relative pl-6">
             {/* Timeline dot */}
             <div
               className="absolute -left-3.5 top-1 w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs"
@@ -73,9 +73,9 @@ export default function HealthHistoryTimeline({ records }: HealthHistoryTimeline
 
               {record.codes && record.codes.length > 0 && (
                 <div className="mt-2 flex gap-2 flex-wrap">
-                  {record.codes.map(c => (
+                  {record.codes.map((c, codeIdx) => (
                     <span
-                      key={c}
+                      key={`${idx}-${codeIdx}-${c}`}
                       className="text-xs px-2 py-0.5 rounded border"
                       style={{ background: "var(--surface)", color: "var(--text-muted)", borderColor: "var(--border)" }}
                     >

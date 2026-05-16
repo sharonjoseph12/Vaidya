@@ -105,12 +105,12 @@ export const SCHEME_LABELS: Record<string, string> = {
 };
 
 /**
- * Derive risk level from a patient's session count.
  * High if sessions_count >= 10, Medium if >= 4, Low otherwise.
  */
-export function deriveRiskLevel(patient: { sessions_count: number }): "high" | "medium" | "low" {
-  if (patient.sessions_count >= 10) return "high";
-  if (patient.sessions_count >= 4) return "medium";
+export function deriveRiskLevel(patient: { sessions_count?: number }): "high" | "medium" | "low" {
+  const count = patient.sessions_count ?? 0;
+  if (count >= 10) return "high";
+  if (count >= 4) return "medium";
   return "low";
 }
 
@@ -198,4 +198,9 @@ export function getVitalStatus(
     default:
       return "unreliable";
   }
+}
+
+/** Loose UUID check for routing (patient and session IDs from the API). */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
 }

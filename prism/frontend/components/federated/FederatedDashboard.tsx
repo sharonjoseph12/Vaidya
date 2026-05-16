@@ -10,10 +10,12 @@ export default function FederatedDashboard() {
   const [status, setStatus] = useState<FLStatus | null>(null);
   const [rounds, setRounds] = useState<FLRound[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        setLoadError(null);
         const [statusData, roundsData] = await Promise.all([
           getFLStatus(),
           getFLRounds(20)
@@ -22,6 +24,9 @@ export default function FederatedDashboard() {
         setRounds(Array.isArray(roundsData) ? roundsData.reverse() : (roundsData.rounds || []).reverse()); // Chronological for chart
       } catch (err) {
         console.error("Failed to load FL data", err);
+        setLoadError(
+          err instanceof Error ? err.message : "Could not load federated learning data. Is the API running?",
+        );
       } finally {
         setLoading(false);
       }
@@ -30,6 +35,14 @@ export default function FederatedDashboard() {
     const interval = setInterval(fetchData, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, []);
+
+  if (loadError) {
+    return (
+      <div className="glass-card p-6 border border-red-500/25 text-red-200 text-sm">
+        {loadError}
+      </div>
+    );
+  }
 
   if (loading || !status) {
     return <div className="glass-card p-6 animate-pulse h-64" style={{ background: "var(--surface-hover)" }}></div>;
@@ -83,20 +96,26 @@ export default function FederatedDashboard() {
       </div>
 
       {/* Accuracy Chart */}
-      <div className="glass-card p-5 h-80">
+      <div className="glass-card p-5 min-h-[320px] min-w-0">
         <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: "var(--text-secondary)" }}>Model Convergence</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="round" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-            <YAxis stroke="var(--text-secondary)" tick={{ fontSize: 12 }} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
-            <Tooltip
-              contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", borderRadius: "8px" }}
-              formatter={(value) => formatPercent(value as number)}
-            />
-            <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="h-[280px] w-full min-w-0">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={280}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="round" stroke="var(--text-secondary)" tick={{fontSize: 12}} />
+                <YAxis stroke="var(--text-secondary)" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", borderRadius: "8px" }}
+                  formatter={(value) => formatPercent(typeof value === "number" ? value : Number(value) || 0)}
+                />
+                <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm pt-8 text-center" style={{ color: "var(--text-muted)" }}>No training rounds recorded yet.</p>
+          )}
+        </div>
       </div>
     </div>
   );

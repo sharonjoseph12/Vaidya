@@ -24,15 +24,18 @@ export default function CausalAttributionChart({ attributions }: CausalAttributi
   return (
     <div className="glass-card p-5 h-64 flex flex-col">
       <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Feature Importance</h3>
-      <div className="flex-1 w-full min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="flex-1 w-full min-h-[200px] min-w-0">
+        <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={220}>
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: -20, bottom: 0 }}>
             <XAxis type="number" hide domain={[0, 'dataMax']} />
             <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 12 }} width={120} />
             <Tooltip
               cursor={{ fill: "rgba(255,255,255,0.05)" }}
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value) => [formatPercent(value as number, 1), "Contribution"]}
+              formatter={(value) => {
+                const n = typeof value === "number" ? value : Number(value) || 0;
+                return [formatPercent(n, 1), "Contribution"];
+              }}
             />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
               {data.map((entry, index) => (

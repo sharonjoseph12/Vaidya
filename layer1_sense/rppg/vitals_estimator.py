@@ -52,7 +52,7 @@ class PRISMVitalsEstimator:
         # Note: Short-term recording (30s) is barely enough for LF, but providing placeholder
         lf_hf = 1.0 # Placeholder
         
-        return float(rmssd), float(sdnn), float(lf_hf)
+        return float(rmssd), float(sdnn), float(lf_hf)  # type: ignore
 
     def estimate_spo2(self, red_signal: np.ndarray, blue_signal: np.ndarray) -> float:
         """
@@ -81,7 +81,7 @@ class PRISMVitalsEstimator:
         # Lower frequency band for breathing (0.1 to 0.5 Hz)
         # Extract envelope
         analytic_signal = signal.hilbert(bvp_signal)
-        amplitude_envelope = np.abs(analytic_signal)
+        amplitude_envelope = np.abs(np.asarray(analytic_signal))
         
         # Find peaks in envelope
         freqs, psd = signal.welch(amplitude_envelope, fs=self.fps, nperseg=len(amplitude_envelope))

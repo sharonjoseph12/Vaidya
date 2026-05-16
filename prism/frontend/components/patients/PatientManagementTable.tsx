@@ -79,7 +79,7 @@ export default function PatientManagementTable({ onStatsChange }: PatientManagem
                 (p) => p.last_session_date && new Date(p.last_session_date).toDateString() === today,
             ).length;
             const avgSessions = patients.length > 0
-                ? patients.reduce((sum, p) => sum + p.sessions_count, 0) / patients.length
+                ? patients.reduce((sum, p) => sum + (p.sessions_count ?? 0), 0) / patients.length
                 : 0;
 
             onStatsChange({ total: result.total, highRisk, scannedToday, avgSessions });

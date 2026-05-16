@@ -28,23 +28,33 @@ export default function NewPatientPage() {
     setLoading(true);
 
     const formData = new FormData(e.target as HTMLFormElement);
-    const data = {
-      abha_id: formData.get("abha_id") || undefined,
+    const abhaRaw = formData.get("abha_id");
+    const abha_id =
+      typeof abhaRaw === "string" && abhaRaw.trim().length > 0 ? abhaRaw.trim() : undefined;
+    const age = parseInt(String(formData.get("age")), 10);
+    const sexRaw = String(formData.get("sex") || "M");
+    const sex = sexRaw === "F" || sexRaw === "O" ? sexRaw : "M";
+    const name = String(profile?.name || formData.get("name") || "").trim() || "Unknown";
+    const location = String(formData.get("location") || "");
+
+    const payload: Record<string, unknown> = {
       consent_given: true,
       consent_purpose: "diagnostic_screening",
       demographics: {
-        name: profile?.name || formData.get("name"),
-        age: parseInt(formData.get("age") as string) || profile?.age,
-        sex: formData.get("sex"),
-        location: formData.get("location"),
-      }
+        name,
+        age: Number.isFinite(age) ? age : profile?.age ?? 0,
+        sex,
+        location,
+      },
     };
+    if (abha_id) payload.abha_id = abha_id;
 
     try {
-      const res = await createPatient(data);
-      setTimeout(() => router.push(`/scan?patientId=${res.id}`), 1000);
+      const created = await createPatient(payload);
+      setTimeout(() => router.push(`/scan?patientId=${encodeURIComponent(created.id)}`), 1000);
     } catch (err) {
       console.error(err);
+    } finally {
       setLoading(false);
     }
   };

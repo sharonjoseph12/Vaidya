@@ -29,7 +29,8 @@ export interface Patient {
   created_at: string;
   consent_given: boolean;
   demographics?: Demographics;
-  sessions_count: number;
+  /** Omitted on some list responses; treat as 0 when missing. */
+  sessions_count?: number;
   last_session_date?: string;
 }
 
@@ -164,6 +165,13 @@ export interface InterventionPlan {
 // Full Diagnostic Result
 // ============================================================
 
+/** In-flight session payload from GET /diagnostics/results/{id} (before FullDiagnosticResult is ready). */
+export interface DiagnosticSessionPending {
+  session_id: string;
+  status: string;
+  message: string;
+}
+
 export interface DiagnosticResult {
   session_id: string;
   status: string;
@@ -178,6 +186,12 @@ export interface DiagnosticResult {
   processing_time_ms: number;
   model_version?: string;
   offline_mode: boolean;
+}
+
+export function isCompleteDiagnosticPayload(
+  data: DiagnosticResult | DiagnosticSessionPending,
+): data is DiagnosticResult {
+  return typeof data === "object" && data !== null && "disease_probabilities" in data;
 }
 
 export interface AnalysisStartResponse {

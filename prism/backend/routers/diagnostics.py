@@ -3,9 +3,10 @@ PRISM Platform — Diagnostics Endpoints
 Handles scan analysis submission, results retrieval, and SSE streaming.
 """
 
+from uuid import UUID, uuid4
+
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from uuid import uuid4
 import asyncio
 import json
 import logging
@@ -20,6 +21,15 @@ from backend.models.diagnostic_result import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _normalize_patient_id(patient_id: str) -> str:
+    """Canonical UUID string for DB filters (case-insensitive input)."""
+    s = (patient_id or "").strip()
+    try:
+        return str(UUID(s))
+    except ValueError:
+        return s
 
 
 @router.post("/analyze", response_model=AnalysisStartResponse, status_code=202)
@@ -38,10 +48,23 @@ async def run_full_analysis(
     """
     client = get_supabase_client()
 
-    # Validate patient exists
-    patient = client.table("patients").select("id").eq("id", patient_id).execute()
+    pid = _normalize_patient_id(patient_id)
+    patient = client.table("patients").select("id").eq("id", pid).execute()
     if not patient.data:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        from backend.config import get_settings
+
+        s = get_settings()
+        hint = ""
+        if s.environment.lower() == "development":
+            hint = (
+                " With the Supabase mock, patients are stored in prism/backend/.prism_mock_db.json "
+                "(or PRISM_MOCK_DB_JSON); delete that file to reset, or register the patient again."
+            )
+        logger.warning("Analyze: patient not found for id=%r (normalized=%r)", patient_id, pid)
+        raise HTTPException(
+            status_code=404,
+            detail=f"Patient not found for id={pid!s}.{hint}",
+        )
 
     # Parse patient features JSON
     try:
@@ -53,7 +76,7 @@ async def run_full_analysis(
     session_id = str(uuid4())
     session_data = {
         "id": session_id,
-        "patient_id": patient_id,
+        "patient_id": pid,
         "session_type": session_type,
         "status": "queued",
     }
@@ -81,14 +104,23 @@ async def run_full_analysis(
         except Exception as e:
             logger.warning("Failed to upload video to storage: %s", e)
 
-    # Queue Celery task
-    from backend.workers.celery_tasks import celery_app
-    task = celery_app.send_task("run_prism_analysis", args=[{
+    # Run task directly for demo/dev (bypass Celery)
+    from backend.workers.celery_tasks import run_prism_analysis as run_task
+    # Use a thread or background task if we want it to be async, but for demo sync is fine
+    # or use asyncio.create_task if it's an async function (but it's a celery task which is sync)
+    class MockTask:
+        def __init__(self): self.id = str(uuid4())
+    task = MockTask()
+    
+    # Run in background so we can return the session ID immediately
+    import threading
+    thread = threading.Thread(target=run_task, args=( {
         "session_id": session_id,
         "audio_path": audio_path,
         "video_path": video_path,
         "patient_features": features,
-    }])
+    },))
+    thread.start()
 
     # Audit log
     await log_audit(
@@ -201,8 +233,12 @@ async def stream_results(session_id: str):
                 )
                 yield f"data: {event.model_dump_json()}\n\n"
                 last_status = current_status
+            else:
+                # Send heartbeat to keep connection alive
+                yield ": heartbeat\n\n"
 
             if current_status in ("complete", "error"):
+                await asyncio.sleep(0.5)  # Give browser time to process
                 break
 
             await asyncio.sleep(1)
@@ -211,6 +247,7 @@ async def stream_results(session_id: str):
         event_generator(),
         media_type="text/event-stream",
         headers={
+            "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",

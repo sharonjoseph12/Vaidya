@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useCallback, useRef, Suspense, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import CameraCapture from "@/components/scan/CameraCapture";
 import AudioCapture from "@/components/scan/AudioCapture";
 import ScanProgress from "@/components/scan/ScanProgress";
@@ -13,18 +14,25 @@ import ScanQualityIndicator from "@/components/scan/ScanQualityIndicator";
 import { startAnalysis, subscribeToProgress, getResults } from "@/lib/api";
 import type { AnalysisProgressEvent, DiagnosticResult } from "@/lib/types";
 import type { RPPGVitals } from "@/lib/rppg";
+import { isUuid } from "@/lib/utils";
 
 type PageState = "questionnaire" | "capture" | "processing" | "results" | "error";
 
-function ScanContent() {
+function ScanPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const patientId = searchParams.get("patientId") || "demo-patient-id";
+  const patientIdRaw = searchParams.get("patientId")?.trim() ?? "demo-patient-id";
+  const patientId = useMemo(
+    () => (patientIdRaw === "demo-patient-id" || isUuid(patientIdRaw) ? patientIdRaw : ""),
+    [patientIdRaw],
+  );
 
   const [pageState, setPageState] = useState<PageState>("questionnaire");
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [isCameraRecording, setIsCameraRecording] = useState(false);
+  const [captureKey, setCaptureKey] = useState(0);
   const [stage, setStage] = useState("queued");
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
@@ -39,6 +47,11 @@ function ScanContent() {
   const handleQuestionnaireComplete = useCallback((answers: SymptomAnswer) => {
     setPatientFeatures(answers as unknown as Record<string, unknown>);
     setPageState("capture");
+  }, []);
+
+  const handleScanningStart = useCallback(() => {
+    setIsRecordingAudio(true);
+    setIsCameraRecording(true);
   }, []);
 
   const handleVideoComplete = useCallback((blob: Blob) => {
@@ -60,7 +73,7 @@ function ScanContent() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!videoBlob) return;
+    if (!videoBlob || !patientId) return;
     setPageState("processing");
 
     // Merge live rPPG vitals into patient features so backend can use them
@@ -88,10 +101,16 @@ function ScanContent() {
 
           if (event.stage === "complete") {
             try {
-              const result = await getResults(response.session_id);
+              const responseData = await getResults(response.session_id);
+              let result: DiagnosticResult | null = null;
+              if ("status" in responseData && responseData.status === "completed") {
+                result = responseData as DiagnosticResult;
+              } else if (!("status" in responseData)) {
+                result = responseData as DiagnosticResult;
+              }
 
               // Inject real rPPG vitals into the result so ScanResultsPanel shows them
-              if (liveVitals && result.sense_results) {
+              if (result && liveVitals && result.sense_results) {
                 result.sense_results.rppg = {
                   hr: liveVitals.hr ?? result.sense_results.rppg?.hr ?? 0,
                   spo2: liveVitals.spo2 ?? result.sense_results.rppg?.spo2 ?? 0,
@@ -130,7 +149,39 @@ function ScanContent() {
     setPatientFeatures({});
     setLiveVitals(null);
     setIsCameraRecording(false);
+    setCaptureKey((k) => k + 1);
   }, []);
+
+  if (!patientId) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 gradient-bg">
+        <div className="text-center max-w-md glass-card p-8 border border-gray-800 rounded-2xl">
+          <h1 className="text-2xl font-bold text-white mb-2">Select a patient</h1>
+          <p className="text-gray-400 text-sm mb-6">
+            Each scan must be linked to a registered patient. Register someone new or pick a patient from your list,
+            then open <span className="font-mono text-gray-300">/scan?patientId=…</span> from there.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/patient/new"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-white text-sm font-medium text-center transition"
+            >
+              Register patient
+            </Link>
+            <Link
+              href="/dashboard/patients"
+              className="px-5 py-2.5 border border-gray-600 hover:bg-gray-800 rounded-xl text-gray-200 text-sm font-medium text-center transition"
+            >
+              Patient list
+            </Link>
+          </div>
+          <Link href="/dashboard" className="inline-block mt-6 text-sm text-gray-500 hover:text-gray-300">
+            ← Back to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gradient-bg">
@@ -186,8 +237,9 @@ function ScanContent() {
       {pageState === "capture" && (
         <div className="flex flex-col items-center gap-4 w-full max-w-2xl">
           <CameraCapture
+            key={`camera-${captureKey}`}
             onComplete={handleVideoComplete}
-            onStartRecording={() => { setIsRecordingAudio(true); setIsCameraRecording(true); }}
+            onScanningStart={handleScanningStart}
             videoRef={videoRef}
           />
 
@@ -204,6 +256,7 @@ function ScanContent() {
           {/* Audio + Cough Detection side by side */}
           <div className="flex flex-col md:flex-row gap-4 items-start justify-center w-full">
             <AudioCapture
+              key={`audio-${captureKey}`}
               onComplete={handleAudioComplete}
               isRecording={isRecordingAudio}
               onAnalyserReady={handleAnalyserReady}
@@ -216,6 +269,7 @@ function ScanContent() {
 
           {videoBlob && (
             <button
+              type="button"
               onClick={handleSubmit}
               className="px-10 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-semibold text-white shadow-md hover:shadow-lg transition-all"
             >
@@ -248,8 +302,7 @@ function ScanContent() {
           <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>Something went wrong during analysis.</p>
           <button
             onClick={handleScanAgain}
-            className="mt-4 px-6 py-2 rounded-lg transition-all border"
-            style={{ borderColor: "var(--border)", color: "var(--text)" }}
+            className="mt-4 px-6 py-2 border border-gray-600 rounded-lg hover:bg-gray-800 transition-all"
           >
             Try Again
           </button>
@@ -266,7 +319,7 @@ export default function ScanPage() {
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
-      <ScanContent />
+      <ScanPageContent />
     </Suspense>
   );
 }

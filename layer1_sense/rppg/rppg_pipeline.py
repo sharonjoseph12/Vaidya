@@ -125,8 +125,8 @@ class PRISMrPPGPipeline:
             raise FaceNotDetectedError("No face detected during recording")
             
         # Update processor and estimator with actual FPS
-        self.processor.fps = fps
-        self.estimator.fps = fps
+        self.processor.fps = int(fps)
+        self.estimator.fps = int(fps)
         
         # Filter and estimate
         fused_bvp = self.processor.process_modality(raw_signals)

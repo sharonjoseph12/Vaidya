@@ -12,18 +12,11 @@ logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
     """
     Validate JWT token from Supabase Auth and extract user info.
-
-    Returns:
-        Dict with user_id, email, and role from the JWT payload.
-
-    Raises:
-        HTTPException 401 if token is invalid or expired.
     """
     token = credentials.credentials
 
@@ -31,15 +24,19 @@ async def get_current_user(
         from backend.config import get_settings
         settings = get_settings()
 
-    # Development bypass for demo purposes
-    if settings.environment == "development" and token == "DEMO_TOKEN":
-        return {
-            "user_id": "00000000-0000-0000-0000-000000000000",
-            "email": "demo@prism.health",
-            "role": "authenticated",
-        }
+        # Development bypass for demo purposes
+        token = token.strip()
+        env = settings.environment.lower()
+        is_dev = env == "development" or settings.debug
+        is_mock = token in ["DEMO_TOKEN", "mock-jwt-token"]
 
-    try:
+        if is_dev and is_mock:
+            return {
+                "user_id": "00000000-0000-0000-0000-000000000000",
+                "email": "demo@prism.health",
+                "role": "authenticated",
+            }
+
         # Supabase JWT uses the anon key as the secret for HS256
         payload = jwt.decode(
             token,
@@ -69,13 +66,11 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-
 async def get_optional_user(
     request: Request,
 ) -> dict | None:
     """
     Optionally extract user from JWT. Returns None if no token present.
-    Used for endpoints that work both authenticated and unauthenticated.
     """
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -85,6 +80,15 @@ async def get_optional_user(
         token = auth_header.split(" ")[1]
         from backend.config import get_settings
         settings = get_settings()
+        env = settings.environment.lower()
+        is_dev = env == "development" or settings.debug
+
+        if is_dev and token in ["DEMO_TOKEN", "mock-jwt-token"]:
+            return {
+                "user_id": "00000000-0000-0000-0000-000000000000",
+                "email": "demo@prism.health",
+                "role": "authenticated",
+            }
 
         payload = jwt.decode(
             token,

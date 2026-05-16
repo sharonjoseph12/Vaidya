@@ -1,5 +1,5 @@
 import numpy as np
-import parselmouth
+import parselmouth  # type: ignore
 from typing import Dict
 from ..datatypes import VoiceBiomarkers
 

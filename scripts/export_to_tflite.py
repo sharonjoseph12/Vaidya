@@ -5,10 +5,15 @@ Exports: YAMNet cough classifier, rPPG signal processor, MobileNetV3 visual clas
 import os
 import sys
 import numpy as np
+import tensorflow as tf
+try:
+    from tensorflow import lite # type: ignore
+    from tensorflow import signal # type: ignore
+except ImportError:
+    pass
 
 def export_yamnet_tflite(output_dir: str = "android_integration/models"):
     """Export YAMNet-based cough classifier to FP16 TFLite."""
-    import tensorflow as tf
     import tensorflow_hub as hub
 
     os.makedirs(output_dir, exist_ok=True)
@@ -26,8 +31,8 @@ def export_yamnet_tflite(output_dir: str = "android_integration/models"):
     concrete = yamnet_inference.get_concrete_function()
 
     # Convert to TFLite with FP16 quantization
-    converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete])
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter = lite.TFLiteConverter.from_concrete_functions([concrete]) # type: ignore
+    converter.optimizations = [lite.Optimize.DEFAULT] # type: ignore
     converter.target_spec.supported_types = [tf.float16]
     tflite_model = converter.convert()
 
@@ -41,7 +46,6 @@ def export_yamnet_tflite(output_dir: str = "android_integration/models"):
 
 def export_rppg_tflite(output_dir: str = "android_integration/models"):
     """Export rPPG signal processor as a TFLite model (FFT + peak detection)."""
-    import tensorflow as tf
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -64,15 +68,15 @@ def export_rppg_tflite(output_dir: str = "android_integration/models"):
             bvp = xs - alpha * ys
 
             # FFT for HR estimation
-            fft = tf.signal.rfft(bvp)
+            fft = signal.rfft(bvp) # type: ignore
             magnitudes = tf.abs(fft)
             return magnitudes
 
     model = RPPGModel()
     concrete = model.process.get_concrete_function()
 
-    converter = tf.lite.TFLiteConverter.from_concrete_functions([concrete])
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter = lite.TFLiteConverter.from_concrete_functions([concrete]) # type: ignore
+    converter.optimizations = [lite.Optimize.DEFAULT] # type: ignore
     converter.target_spec.supported_types = [tf.float16]
     tflite_model = converter.convert()
 
@@ -101,7 +105,7 @@ def export_visual_tflite(output_dir: str = "android_integration/models"):
     onnx_path = os.path.join(output_dir, "visual_classifier.onnx")
 
     torch.onnx.export(
-        model, dummy, onnx_path,
+        model, (dummy,), onnx_path,
         input_names=["image"],
         output_names=["jaundice", "anemia", "cyanosis", "dengue"],
         dynamic_axes={"image": {0: "batch"}},

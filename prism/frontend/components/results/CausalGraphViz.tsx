@@ -76,28 +76,29 @@ export default function CausalGraphViz({ attributions, primaryDiagnosis }: Causa
       factor: "#f59e0b", // orange
     };
 
-    const dragBehavior = d3.drag<SVGGElement, Node>()
-      .on("start", (event, d) => {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      })
-      .on("drag", (event, d) => {
-        d.fx = event.x;
-        d.fy = event.y;
-      })
-      .on("end", (event, d) => {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      });
-
-    const node = svg.append("g")
-      .selectAll("g")
+    const node = svg
+      .append("g")
+      .selectAll<SVGGElement, Node>("g")
       .data(nodes)
-      .join("g")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .call(dragBehavior as any);
+      .join((enter) => enter.append("g"))
+      .call(
+        d3
+          .drag<SVGGElement, Node>()
+          .on("start", (event, d) => {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          })
+          .on("drag", (event, d) => {
+            d.fx = event.x;
+            d.fy = event.y;
+          })
+          .on("end", (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+          }),
+      );
 
     node.append("circle")
       .attr("r", d => d.group === "disease" ? 20 : 10 + d.value * 15)

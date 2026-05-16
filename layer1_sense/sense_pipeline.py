@@ -161,7 +161,7 @@ class PRISMSensePipeline:
 
     def _audio_to_tensor(self, a: AudioAnalysisResult) -> torch.Tensor:
         probs = [a.disease_probs.get(d, 0.0) for d in
-                 ["TB", "COVID", "Pneumonia", "Whooping", "Asthma", "COPD", "Healthy", "Uncertain"]]
+                 ["TB", "COVID", "Pneumonia", "Whooping_Cough", "Asthma", "COPD", "Healthy", "Jaundice"]]
         extras = [
             a.breathing_rate,
             a.voice_biomarkers.jitter,

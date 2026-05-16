@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getResults, getPatient } from "@/lib/api";
-import type { DiagnosticResult, Patient } from "@/lib/types";
+import { getResults, getPatient, downloadReport } from "@/lib/api";
+import { isCompleteDiagnosticPayload, type DiagnosticResult, type Patient } from "@/lib/types";
 
 import DiseaseProbabilityCard from "@/components/results/DiseaseProbabilityCard";
 import UncertaintyBands from "@/components/results/UncertaintyBands";
@@ -37,6 +37,7 @@ export default function PatientDetailPage() {
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [abdmStatus, setAbdmStatus] = useState<"idle" | "pushing" | "success" | "error">("idle");
   const [pdfStatus, setPdfStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -46,27 +47,64 @@ export default function PatientDetailPage() {
   const [horizon, setHorizon] = useState(12);
 
   useEffect(() => {
+    let cancelled = false;
+    const intervalRef = { current: null as ReturnType<typeof setInterval> | null };
+    let attempts = 0;
+    const maxAttempts = 120;
+
     async function loadData() {
       try {
-        const [resultsSettled, patientSettled] = await Promise.allSettled([
-          getResults(id),
-          getPatient(id),
-        ]);
-        if (resultsSettled.status === "fulfilled") {
-          setResult(resultsSettled.value);
-        } else {
-          setError((resultsSettled.reason as Error)?.message || "Failed to load results");
-        }
-        if (patientSettled.status === "fulfilled") {
-          setPatient(patientSettled.value);
-        }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load results");
-      } finally {
-        setLoading(false);
+        const patientSettled = await getPatient(id).catch(() => null);
+        if (patientSettled) setPatient(patientSettled);
+      } catch (err) {
+        console.error(err);
       }
     }
     loadData();
+
+    async function poll() {
+      if (cancelled) return;
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        setError("Timed out waiting for analysis to finish.");
+        setLoading(false);
+        setPendingMessage(null);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+      try {
+        const raw = await getResults(id);
+        if (cancelled) return;
+
+        if (!isCompleteDiagnosticPayload(raw)) {
+          setPendingMessage(raw.message);
+          setResult(null);
+          setLoading(false);
+          return;
+        }
+
+        setPendingMessage(null);
+        setResult(raw);
+        setLoading(false);
+        if (raw.status === "complete" || raw.status === "error") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load results");
+          setLoading(false);
+          setPendingMessage(null);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+      }
+    }
+
+    void poll();
+    intervalRef.current = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [id]);
 
   const handlePushToABDM = async () => {
@@ -90,11 +128,7 @@ export default function PatientDetailPage() {
   const handleDownloadPDF = async () => {
     setPdfStatus("loading");
     try {
-      const res = await fetch(`${API_BASE}/diagnostics/report/${id}/pdf`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error("PDF generation failed");
-      const blob = await res.blob();
+      const blob = await downloadReport(id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -109,10 +143,22 @@ export default function PatientDetailPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !pendingMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-bg">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (pendingMessage && !result) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gradient-bg p-8">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
+        <p className="text-gray-300 text-center max-w-md">{pendingMessage}</p>
+        <p className="text-gray-500 text-sm mt-4">
+          Session <span className="font-mono">{id.slice(0, 8)}…</span>
+        </p>
       </div>
     );
   }
