@@ -6,11 +6,12 @@ import { pickAudioMimeType } from "@/lib/mediaRecorder";
 interface AudioCaptureProps {
   onComplete: (audioBlob: Blob) => void;
   isRecording: boolean;
+  onAnalyserReady?: (analyser: AnalyserNode) => void;
 }
 
 const RECORDER_SLICE_MS = 250;
 
-export default function AudioCapture({ onComplete, isRecording }: AudioCaptureProps) {
+export default function AudioCapture({ onComplete, isRecording, onAnalyserReady }: AudioCaptureProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -21,6 +22,7 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
   const [level, setLevel] = useState(0);
   const [started, setStarted] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!isRecording) {
@@ -66,9 +68,10 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
 
         const source = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 2048;
         source.connect(analyser);
         analyserRef.current = analyser;
+        if (onAnalyserReady) onAnalyserReady(analyser);
 
         chunksRef.current = [];
         const mime = pickAudioMimeType();
@@ -121,11 +124,9 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
       analyserRef.current = null;
       queueMicrotask(() => setStarted(false));
     };
-  }, [isRecording, onComplete]);
-
+  }, [isRecording, onComplete, onAnalyserReady]);
   useEffect(() => {
     if (!started || !analyserRef.current || !canvasRef.current) return;
-
     const analyser = analyserRef.current;
     const canvas = canvasRef.current;
     const ctx2d = canvas.getContext("2d");
@@ -140,8 +141,8 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
       setLevel(avg / 255);
 
       graphics.clearRect(0, 0, canvas.width, canvas.height);
-      const barWidth = canvas.width / data.length;
 
+      const barWidth = canvas.width / data.length;
       for (let i = 0; i < data.length; i++) {
         const barHeight = (data[i] / 255) * canvas.height;
         const hue = 210 + (data[i] / 255) * 30;
@@ -151,7 +152,6 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
       animFrameRef.current = requestAnimationFrame(draw);
     }
     draw();
-
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [started]);
 
@@ -176,7 +176,7 @@ export default function AudioCapture({ onComplete, isRecording }: AudioCapturePr
 
       <div className="mt-2 h-1.5 bg-gray-800 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-100"
+          className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-100"
           style={{ width: `${level * 100}%` }}
         />
       </div>

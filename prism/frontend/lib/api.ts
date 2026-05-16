@@ -7,13 +7,21 @@ import type {
   ABHAProfile,
   AnalysisProgressEvent,
   AnalysisStartResponse,
+  AuditLogResponse,
   DiagnosticResult,
   DiagnosticSessionPending,
+  FLNode,
   FLRound,
   FLStatus,
+  HealthStatus,
+  ModelVersion,
   Patient,
   PatientList,
+  PendingReview,
+  RecentSession,
+  SessionSummary
 } from "./types";
+import { offlineStore } from "./offline-store";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -59,29 +67,54 @@ function getAuthHeaders(): HeadersInit {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  });
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+        ...options.headers,
+      },
+    });
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, formatApiDetail(body.detail ?? res.statusText));
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(res.status, formatApiDetail(body.detail ?? res.statusText));
+    }
+
+    offlineStore.setOffline(false); // Backend reachable
+    return res.json();
+  } catch (err) {
+    if (err instanceof TypeError && err.message.includes("fetch")) {
+      // Network failure — backend unreachable
+      offlineStore.setOffline(true);
+    }
+    throw err;
   }
-
-  return res.json();
 }
+
 
 // ============================================================
 // Patient APIs
 // ============================================================
 
-export async function getPatients(page = 1, perPage = 20): Promise<PatientList> {
-  return request(`/patients?page=${page}&per_page=${perPage}`);
+export async function getPatients(
+  page = 1,
+  perPage = 20,
+  search?: string,
+  riskLevel?: string,
+  sortField?: string,
+  sortDir?: "asc" | "desc",
+): Promise<PatientList> {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
+  if (search) params.set("search", search);
+  if (riskLevel) params.set("risk_level", riskLevel);
+  if (sortField) params.set("sort_field", sortField);
+  if (sortDir) params.set("sort_dir", sortDir);
+  return request(`/patients?${params.toString()}`);
 }
 
 export async function getPatient(id: string): Promise<Patient> {
@@ -183,9 +216,62 @@ export async function pushReportToABDM(sessionId: string, abhaId: string): Promi
 // ============================================================
 
 export async function getFLStatus(): Promise<FLStatus> {
-  return request("/federated/status");
+  return request<FLStatus>("/federated/status");
 }
 
 export async function getFLRounds(limit = 20): Promise<{ rounds: FLRound[] }> {
-  return request(`/federated/rounds?limit=${limit}`);
+  return request<{ rounds: FLRound[] }>(`/federated/rounds?limit=${limit}`);
+}
+
+export async function getFLNodes(): Promise<FLNode[]> {
+  return request<FLNode[]>("/federated/nodes");
+}
+
+export async function getModelVersionHistory(): Promise<ModelVersion[]> {
+  return request<ModelVersion[]>("/federated/model-versions");
+}
+
+export async function triggerFLRound(minNodes: number): Promise<{ round_number: number; status: string }> {
+  return request<{ round_number: number; status: string }>("/federated/trigger-round", {
+    method: "POST",
+    body: JSON.stringify({ min_nodes: minNodes }),
+  });
+}
+
+// ============================================================
+// Session / Health APIs
+// ============================================================
+
+export async function getRecentSessions(limit = 5): Promise<RecentSession[]> {
+  return request<RecentSession[]>(`/diagnostics/recent-sessions?limit=${limit}`);
+}
+
+export async function healthCheck(): Promise<HealthStatus> {
+  const start = Date.now();
+  const result = await request<HealthStatus>("/health");
+  return { ...result, latency_ms: Date.now() - start };
+}
+
+export async function getPatientSessions(patientId: string): Promise<SessionSummary[]> {
+  return request<SessionSummary[]>(`/patients/${patientId}/sessions`);
+}
+
+export async function getPendingReviews(): Promise<PendingReview[]> {
+  return request<PendingReview[]>("/diagnostics/pending-review");
+}
+
+export async function submitReview(
+  sessionId: string,
+  approved: boolean,
+  overrideDiagnosis?: string,
+  notes?: string,
+): Promise<{ status: string }> {
+  return request<{ status: string }>(`/diagnostics/review/${sessionId}`, {
+    method: "POST",
+    body: JSON.stringify({ approved, override_diagnosis: overrideDiagnosis, notes }),
+  });
+}
+
+export async function getAuditLog(page = 1, limit = 20): Promise<AuditLogResponse> {
+  return request<AuditLogResponse>(`/audit/log?page=${page}&limit=${limit}`);
 }

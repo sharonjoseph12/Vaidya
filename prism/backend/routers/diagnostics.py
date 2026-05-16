@@ -255,7 +255,117 @@ async def stream_results(session_id: str):
     )
 
 
-@router.get("/report/{session_id}/pdf")
+@router.get("/recent-sessions")
+async def get_recent_sessions(
+    limit: int = 5,
+    current_user: dict = Depends(get_current_user),
+):
+    """Get the most recent completed diagnostic sessions with patient names."""
+    if limit > 50:
+        limit = 50
+    client = get_supabase_client()
+    try:
+        result = (
+            client.table("diagnostic_sessions")
+            .select("id, patient_id, primary_diagnosis, confidence_score, created_at, patients(demographics)")
+            .eq("status", "complete")
+            .order("created_at", ascending=False)
+            .limit(limit)
+            .execute()
+        )
+        sessions = []
+        for row in result.data or []:
+            patient_data = row.get("patients") or {}
+            demographics = patient_data.get("demographics") or {}
+            sessions.append({
+                "session_id": row["id"],
+                "patient_id": row["patient_id"],
+                "patient_name": demographics.get("name"),
+                "primary_diagnosis": row.get("primary_diagnosis"),
+                "confidence_score": row.get("confidence_score"),
+                "created_at": row.get("created_at", ""),
+            })
+        return sessions
+    except Exception as e:
+        logger.error("Failed to fetch recent sessions: %s", e)
+        return []
+
+
+@router.get("/pending-review")
+async def get_pending_reviews(
+    current_user: dict = Depends(get_current_user),
+):
+    """Get sessions with confidence >= 70% awaiting doctor review."""
+    client = get_supabase_client()
+    try:
+        result = (
+            client.table("diagnostic_sessions")
+            .select("id, patient_id, primary_diagnosis, confidence_score, created_at, patients(demographics)")
+            .eq("status", "complete")
+            .gte("confidence_score", 0.70)
+            .in_("review_status", ["pending", None])
+            .order("created_at", ascending=False)
+            .limit(50)
+            .execute()
+        )
+        reviews = []
+        for row in result.data or []:
+            patient_data = row.get("patients") or {}
+            demographics = patient_data.get("demographics") or {}
+            reviews.append({
+                "session_id": row["id"],
+                "patient_id": row["patient_id"],
+                "patient_name": demographics.get("name", "Unknown"),
+                "primary_diagnosis": row.get("primary_diagnosis", ""),
+                "confidence_score": row.get("confidence_score", 0.0),
+                "created_at": row.get("created_at", ""),
+            })
+        return reviews
+    except Exception as e:
+        logger.error("Failed to fetch pending reviews: %s", e)
+        return []
+
+
+@router.post("/review/{session_id}")
+async def submit_review(
+    session_id: str,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Submit a doctor review (approve or override) for a session."""
+    client = get_supabase_client()
+
+    session = client.table("diagnostic_sessions").select("id, review_status").eq("id", session_id).execute()
+    if not session.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.data[0].get("review_status") in ("approved", "overridden"):
+        raise HTTPException(status_code=409, detail="Session already reviewed")
+
+    approved = body.get("approved", True)
+    override_diagnosis = body.get("override_diagnosis")
+    notes = body.get("notes", "")
+
+    update_data = {
+        "review_status": "approved" if approved else "overridden",
+        "reviewer_id": current_user.get("user_id"),
+        "review_notes": notes,
+    }
+    if override_diagnosis:
+        update_data["primary_diagnosis"] = override_diagnosis
+
+    client.table("diagnostic_sessions").update(update_data).eq("id", session_id).execute()
+
+    await log_audit(
+        user_id=current_user["user_id"],
+        action="update",
+        resource_type="diagnostic_session",
+        resource_id=session_id,
+    )
+
+    return {"status": "approved" if approved else "overridden", "session_id": session_id}
+
+
 async def generate_pdf_report(
     session_id: str,
     current_user: dict = Depends(get_current_user),

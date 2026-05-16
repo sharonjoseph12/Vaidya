@@ -7,15 +7,17 @@ type ScanState = "IDLE" | "DETECTING_FACE" | "SCANNING" | "COMPLETE" | "ERROR";
 
 interface CameraCaptureProps {
   onComplete: (videoBlob: Blob) => void;
-  /** Fires when the timed video capture actually starts (sync microphone here). */
+  onStartRecording?: () => void;
   onScanningStart?: () => void;
   duration?: number;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
 }
 
 const RECORDER_SLICE_MS = 250;
 
-export default function CameraCapture({ onComplete, onScanningStart, duration = 30 }: CameraCaptureProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export default function CameraCapture({ onComplete, onScanningStart, onStartRecording, duration = 30, videoRef: externalVideoRef }: CameraCaptureProps) {
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = externalVideoRef || internalVideoRef;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [state, setState] = useState<ScanState>("IDLE");
@@ -82,7 +84,9 @@ export default function CameraCapture({ onComplete, onScanningStart, duration = 
     recorder.start(RECORDER_SLICE_MS);
     mediaRecorderRef.current = recorder;
     setState("SCANNING");
-  }, [duration, onComplete, onScanningStart]);
+    onScanningStart?.();
+    if (onStartRecording) onStartRecording();
+  }, [duration, onComplete, onScanningStart, onStartRecording]);
 
   useEffect(() => {
     if (state !== "SCANNING") return;
@@ -137,9 +141,9 @@ export default function CameraCapture({ onComplete, onScanningStart, duration = 
       </div>
 
       {state === "SCANNING" && (
-        <div className="w-80 h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div className="w-80 h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-1000 ease-linear"
+            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000 ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -150,19 +154,19 @@ export default function CameraCapture({ onComplete, onScanningStart, duration = 
           <button
             type="button"
             onClick={startCamera}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold transition-all hover:shadow-lg hover:shadow-blue-500/25"
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
           >
             Start camera
           </button>
         )}
         {state === "DETECTING_FACE" && (
-          <p className="text-amber-400 animate-pulse">Preparing capture…</p>
+          <p className="text-amber-400 animate-pulse font-medium">Preparing capture...</p>
         )}
         {state === "SCANNING" && (
-          <p className="text-blue-400">Recording video — hold still for {countdown}s</p>
+          <p className="text-blue-400 font-medium">Recording video — hold still for {countdown}s</p>
         )}
         {state === "COMPLETE" && (
-          <p className="text-green-400 font-semibold">Video capture complete</p>
+          <p className="text-green-400 font-semibold">Video capture complete ✓</p>
         )}
         {state === "ERROR" && (
           <div className="text-red-400 text-sm space-y-1">

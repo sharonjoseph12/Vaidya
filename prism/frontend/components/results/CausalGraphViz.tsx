@@ -54,7 +54,7 @@ export default function CausalGraphViz({ attributions, primaryDiagnosis }: Causa
 
     const svg = d3.select(svgRef.current)
       .attr("viewBox", [0, 0, width, height]);
-    
+
     svg.selectAll("*").remove();
 
     const simulation = d3.forceSimulation<Node>(nodes)

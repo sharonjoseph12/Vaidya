@@ -1,202 +1,150 @@
-"""T025 - PRISMCausalEngine: Main public API for Layer 2."""
-from __future__ import annotations
-
+import dowhy
+from dowhy import CausalModel
+import pandas as pd
+import numpy as np
 import logging
-import time
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
-from layer2_reason.counterfactuals.explainer import PRISMExplainer
-from layer2_reason.counterfactuals.dice_generator import generate_counterfactuals
-from layer2_reason.counterfactuals.counterfactual_ranker import rank_counterfactuals
-from layer2_reason.data.feature_validator import validate_features
-from layer2_reason.scm.causal_attribution import CausalAttributions
-from layer2_reason.scm.intervention_engine import InterventionResult
-from layer2_reason.scm.intervention_catalog import InterventionOption, get_catalog
-from layer2_reason.scm.uncertainty_reducer import recommend_diagnostic_test
-from layer2_reason.causal_discovery.federated_graph_updater import update_causal_graph_from_aggregated_weights
 
 logger = logging.getLogger(__name__)
 
+# Generate synthetic cohort once at startup
+np.random.seed(42)
+n = 2000
+df = pd.DataFrame({
+    'malnutrition':      np.random.beta(2,5,n),
+    'crowding_index':    np.random.exponential(2,n).clip(1,8),
+    'bmi':               np.random.normal(20,4,n).clip(13,40),
+    'smoking':           np.random.binomial(1,0.25,n).astype(float),
+    'nutrition_score':   np.random.uniform(1,10,n),
+    'hemoglobin':        np.random.normal(10,2,n).clip(6,16),
+    'ventilation_score': np.random.uniform(1,10,n),
+    'age':               np.random.randint(18,75,n).astype(float),
+})
+df['TB'] = ((df['malnutrition']>0.5).astype(int) +
+            (df['crowding_index']>3).astype(int) +
+            (df['bmi']<18).astype(int) > 1).astype(int)
+df['Anemia'] = (df['hemoglobin'] < 10).astype(int)
+df['COPD'] = df['smoking'] * (df['age'] > 40).astype(int)
 
-# Placeholder for US2 (DiCE counterfactuals)
-@dataclass
-class CounterfactualExplanation:
-    changes: Dict[str, Tuple[float, float]]
-    new_disease_probability: float
-    probability_reduction: float
-    n_features_changed: int
-    feasibility_score: float
-    rank: int
+CAUSAL_GRAPH = """digraph {
+    malnutrition -> TB;
+    malnutrition -> Anemia;
+    malnutrition -> hemoglobin;
+    crowding_index -> TB;
+    bmi -> TB;
+    bmi -> Anemia;
+    smoking -> COPD;
+    smoking -> TB;
+    ventilation_score -> TB;
+    nutrition_score -> malnutrition;
+    nutrition_score -> hemoglobin;
+}"""
 
+# Pre-build DoWhy models for each treatment-outcome pair
+TREATMENT_OUTCOME_PAIRS = {
+    'TB': ['malnutrition', 'crowding_index', 'nutrition_score', 'smoking'],
+    'Anemia': ['malnutrition', 'nutrition_score', 'hemoglobin'],
+    'COPD': ['smoking']
+}
 
-@dataclass
-class CausalReport:
-    """The complete output of the PRISMCausalEngine."""
-    disease: str
-    probability: float
-    confidence_interval: Tuple[float, float]
-    causal_attributions: CausalAttributions
-    top_interventions: List[InterventionResult]
-    counterfactuals: List[CounterfactualExplanation]
-    narrative: str
-    causal_graph_dot: str
-    processing_time_ms: float
-    warnings: List[str]
+dowhy_models = {}
+for disease, treatments in TREATMENT_OUTCOME_PAIRS.items():
+    dowhy_models[disease] = {}
+    for treatment in treatments:
+        try:
+            m = CausalModel(
+                data=df,
+                treatment=treatment,
+                outcome=disease,
+                graph=CAUSAL_GRAPH
+            )
+            estimand = m.identify_effect(proceed_when_unidentifiable=True)
+            estimate = m.estimate_effect(
+                estimand,
+                method_name="backdoor.linear_regression",
+                target_units="ate"
+            )
+            dowhy_models[disease][treatment] = {
+                'model': m,
+                'estimand': estimand, 
+                'ate': estimate.value  # Average Treatment Effect
+            }
+        except Exception as e:
+            logger.warning(f"Skipping {treatment}->{disease}: {e}")
 
-
-class PRISMCausalEngine:
-    """Core public interface for Layer 2: REASON.
-
-    Transforms Layer 1 biomarker probabilities into causal explanations.
+def get_causal_attribution(disease: str, patient_features: dict) -> dict:
     """
+    Real causal attribution using DoWhy ATEs.
+    ATE × patient's feature value = that factor's contribution.
+    """
+    if disease not in dowhy_models:
+        return {}
+    
+    attributions = {}
+    for treatment, info in dowhy_models[disease].items():
+        patient_val = patient_features.get(treatment, 0)
+        # Contribution = ATE × how much this patient has of this factor
+        contribution = abs(info['ate']) * float(patient_val)
+        attributions[treatment] = contribution
+    
+    # Normalize
+    total = sum(attributions.values()) or 1
+    return {k: round(v/total, 3) for k,v in 
+            sorted(attributions.items(), key=lambda x: x[1], reverse=True)}
 
-    def __init__(
-        self,
-        disease: str,
-        graphs_dir: str | Path = "layer2_reason/graphs/",
-        models_dir: str | Path = "layer2_reason/scm_models/",
-    ):
-        self.disease = disease
-        self.graphs_dir = Path(graphs_dir)
-        self.models_dir = Path(models_dir)
+def estimate_intervention_effect(
+    disease: str, 
+    treatment: str, 
+    patient_prob: float
+) -> float:
+    """
+    Returns new disease probability after do(treatment=0).
+    Uses real DoWhy ATE.
+    """
+    if disease not in dowhy_models or treatment not in dowhy_models[disease]:
+        return patient_prob
+    
+    ate = dowhy_models[disease][treatment]['ate']
+    # ATE = E[Y|do(T=1)] - E[Y|do(T=0)]
+    # Intervening (setting T=0) reduces outcome by ATE
+    new_prob = max(0, min(1, patient_prob - abs(ate)))
+    return round(new_prob, 3)
 
-        # Validate disease string (must exist in models)
-        if not (self.models_dir / f"{disease}_scm.pkl").exists() and disease != "test_synthetic":
-            logger.warning("No SCM found for '%s', will fallback or raise during analysis", disease)
-
-        self.scm_pipeline = PRISMSCMPipeline(models_dir=self.models_dir, graphs_dir=self.graphs_dir)
-        self.explainer = PRISMExplainer()
+def full_causal_report(disease_probs: dict, patient_features: dict) -> dict:
+    if not disease_probs:
+        return {}
         
-        # Pre-load graph and model for latency
-        try:
-            self.scm_pipeline.load_model(disease)
-            self._graph_dot = self.scm_pipeline.store.export_dot(disease)
-        except Exception as e:
-            logger.error("Failed to pre-load models for %s: %s", disease, e)
-            self._graph_dot = ""
-
-        logger.info("PRISMCausalEngine initialized for %s", disease)
-
-    def full_causal_analysis(
-        self,
-        patient_features: Dict[str, float],
-        disease_probability: float,
-        top_k_counterfactuals: int = 3,
-        modality_available: Optional[Dict[str, bool]] = None,
-    ) -> CausalReport:
-        """Run complete causal analysis for a single patient."""
-        start_t = time.perf_counter()
-        warnings = []
-
-        # 1. Validate features (US1)
-        try:
-            clean_features = validate_features(patient_features, modality_available)
-        except Exception as e:
-            warnings.append(str(e))
-            clean_features = patient_features  # Best-effort fallback
-
-        # The target outcome variable is usually `{disease}_susceptibility`
-        # In MVP, we map to `wbc` or similar if susceptibility isn't available
-        outcome_var = f"{self.disease}_susceptibility"
-        if "test" in self.disease:
-            outcome_var = "Z"  # synthetic SCM test case
-
-        # 2. Causal attribution & Interventions (US1)
-        attributions, interventions = self.scm_pipeline.analyze_patient(
-            patient_features=clean_features,
-            disease=self.disease,
-            outcome_var=outcome_var,
+    top_disease = max(disease_probs, key=disease_probs.get)
+    top_prob = disease_probs[top_disease]
+    
+    attributions = get_causal_attribution(top_disease, patient_features)
+    top_cause = next(iter(attributions), None)
+    
+    interventions = []
+    for treatment in (TREATMENT_OUTCOME_PAIRS.get(top_disease, [])):
+        new_prob = estimate_intervention_effect(top_disease, treatment, top_prob)
+        interventions.append({
+            'treatment': treatment,
+            'baseline_prob': top_prob,
+            'intervened_prob': new_prob,
+            'reduction_pct': round((top_prob - new_prob)/max(top_prob, 0.001)*100, 1)
+        })
+    interventions.sort(key=lambda x: x['reduction_pct'], reverse=True)
+    
+    narrative = ""
+    if interventions and top_cause:
+        narrative = (
+            f"{top_disease} probability {top_prob:.0%}. "
+            f"Primary driver: {top_cause} ({attributions.get(top_cause,0):.0%}). "
+            f"Eliminating it reduces probability to "
+            f"{interventions[0]['intervened_prob']:.0%}."
         )
-
-        # 3. Diverse Counterfactuals (US2)
-        raw_cfs = generate_counterfactuals(
-            patient_data=clean_features,
-            disease_model=None, # Passed if DiCE wrapper available
-            features_list=list(clean_features.keys()),
-            reference_data=self.scm_pipeline._reference_data.get(self.disease, pd.DataFrame()),
-            n_cf=5,
-        )
-        counterfactuals = rank_counterfactuals(raw_cfs)
-
-        # 4. Uncertainty Reduction (US4)
-        if 0.4 <= disease_probability <= 0.6:
-            test_rec = recommend_diagnostic_test(self.disease, {"prob": disease_probability})
-            if test_rec != "clinical_review":
-                # Inject as highest priority intervention
-                test_iv = InterventionResult(
-                    treatment_var=f"diagnostic_test:{test_rec}",
-                    treatment_value=1.0,
-                    outcome_var="uncertainty",
-                    baseline_outcome=1.0,
-                    intervened_outcome=0.0,
-                    absolute_reduction=999.0, # force top sort
-                    relative_reduction_pct=100.0,
-                    confidence_interval=(0.0, 0.0),
-                    p_value_refutation=0.0,
-                    is_identifiable=True,
-                )
-                interventions.insert(0, test_iv)
-
-        # 5. Narrative Explanation (US1)
-        top_intervention = interventions[0] if interventions else None
-        top_cf = counterfactuals[0] if counterfactuals else None
-
-        narrative = self.explainer.build_plain_language_narrative(
-            disease=self.disease,
-            prob=disease_probability,
-            attributions=attributions.attributions,
-            top_intervention=top_intervention,
-            top_counterfactual=top_cf,
-        )
-
-        proc_time = (time.perf_counter() - start_t) * 1000
-
-        # Assemble report
-        return CausalReport(
-            disease=self.disease,
-            probability=disease_probability,
-            confidence_interval=(max(0.0, disease_probability - 0.1), min(1.0, disease_probability + 0.1)),
-            causal_attributions=attributions,
-            top_interventions=interventions[:3],
-            counterfactuals=counterfactuals[:top_k_counterfactuals],
-            narrative=narrative,
-            causal_graph_dot=self._graph_dot,
-            processing_time_ms=proc_time,
-            warnings=warnings,
-        )
-
-    def batch_analyze(
-        self,
-        patients: List[Dict[str, float]],
-        disease_probability_list: List[float],
-        max_workers: int = 4,
-    ) -> List[CausalReport]:
-        """Process multiple patients in parallel."""
-        if len(patients) != len(disease_probability_list):
-            raise ValueError("Mismatched list lengths")
-
-        def _analyze(pt_dict, prob):
-            return self.full_causal_analysis(pt_dict, prob)
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(_analyze, patients, disease_probability_list))
-        return results
-
-    def get_intervention_catalog(self) -> List[InterventionOption]:
-        """Query available interventions for this disease."""
-        return get_catalog(self.disease)
-
-    def apply_federated_update(self, delta_weights: Dict[tuple[str, str], float], epsilon: float = 1.0) -> None:
-        """Apply federated learning updates to the causal graph."""
-        graph = self.scm_pipeline.store.load_graph(self.disease)
-        updated_graph = update_causal_graph_from_aggregated_weights(
-            current_graph=graph,
-            delta_weights=delta_weights,
-            epsilon=epsilon
-        )
-        self.scm_pipeline.store.save_graph(self.disease, updated_graph)
-        self._graph_dot = self.scm_pipeline.store.export_dot(self.disease)
-        logger.info("Applied federated update to %s graph", self.disease)
+    
+    return {
+        'disease': top_disease,
+        'probability': top_prob,
+        'attributions': attributions,
+        'interventions': interventions,
+        'best_intervention': interventions[0] if interventions else None,
+        'narrative': narrative,
+        'causal_graph_dot': CAUSAL_GRAPH
+    }

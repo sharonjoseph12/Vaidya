@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from layer2_reason.causal_engine import PRISMCausalEngine
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,14 @@ class InferenceService:
         from backend.core_ml.model_loader import (
             load_yamnet_model,
         )
+        
+        # Load actual models
+        self.causal_engine_tb = PRISMCausalEngine(
+            disease="tb",
+            graphs_dir=Path("/app/layer2_reason/graphs/"),
+            models_dir=Path("/app/layer2_reason/scm_models/")
+        )
+        logger.info("Inference models loaded (Layer 2 Integrated)")
 
         self.sense_model = load_yamnet_model()
         self._models_loaded = True
@@ -227,4 +236,41 @@ def _static_demo_payload() -> dict[str, Any]:
     }
 
 
+    def _run_reason(self, sense_results, patient_features):
+        """Layer 2 — delegates to Person 2's causal engine."""
+        # Map sense_results + patient_features to engine input
+        # For demo, we use a default disease probability of 0.75 if not provided
+        prob = patient_features.get("disease_probability", 0.75)
+        
+        report = self.causal_engine_tb.full_causal_analysis(
+            patient_features=patient_features,
+            disease_probability=prob
+        )
+        
+        return {
+            "attributions": report.causal_attributions.attributions,
+            "narrative": report.narrative,
+            "causal_graph_dot": report.causal_graph_dot,
+            "counterfactuals": [
+                {
+                    "changes": cf.changes,
+                    "original_probability": prob,
+                    "new_probability": cf.new_disease_probability,
+                    "feasibility_score": cf.feasibility_score
+                } for cf in report.counterfactuals
+            ]
+        }
+
+    def _run_project(self, sense, causal, features):
+        """Layer 3 — delegates to Person 3's digital twin."""
+        # TODO: Integrate actual Digital Twin
+        return None
+
+    def _run_act(self, sense, causal, twin, features):
+        """Layer 4 — delegates to Person 3's RL optimizer."""
+        # TODO: Integrate actual RL agent
+        return None
+
+
+# Singleton
 inference_service = InferenceService()

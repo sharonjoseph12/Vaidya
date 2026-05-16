@@ -15,13 +15,13 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
   const data = trajectory.without_intervention.map((baseline, i) => {
     const intervention = trajectory.with_best_intervention[i];
     const disease = "tb_prob"; // Example, should be dynamic based on primary diagnosis
-    
+
     const baseValue = baseline.values[disease] || 0;
     const intValue = intervention ? intervention.values[disease] || 0 : 0;
-    
+
     // Mock confidence intervals (±10% to ±20% growing over time)
     const ciSpread = 0.05 + (i * 0.02);
-    
+
     return {
       month: baseline.month,
       baseline: baseValue,
@@ -41,16 +41,16 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
       <div className="flex-1 w-full min-h-[260px] min-w-0">
         <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height={260}>
           <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <XAxis 
-              dataKey="month" 
-              tickFormatter={(m) => `M+${m}`} 
-              tick={{ fill: "#94a3b8", fontSize: 12 }} 
-              axisLine={false} 
+            <XAxis
+              dataKey="month"
+              tickFormatter={(m) => `M+${m}`}
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
+              axisLine={false}
               tickLine={false}
             />
-            <YAxis 
-              tickFormatter={(v) => formatPercent(v)} 
-              domain={[0, 1]} 
+            <YAxis
+              tickFormatter={(v) => formatPercent(v)}
+              domain={[0, 1]}
               tick={{ fill: "#94a3b8", fontSize: 12 }}
               axisLine={false}
               tickLine={false}
@@ -66,7 +66,7 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
                 return [String(value ?? ""), nm];
               }}
             />
-            
+
             <ReferenceLine x={0} stroke="#4b5563" strokeDasharray="3 3" label={{ position: "top", value: "Today", fill: "#94a3b8", fontSize: 12 }} />
             <ReferenceLine y={0.8} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} label={{ position: "insideTopLeft", value: "Critical Risk Threshold", fill: "#ef4444", fontSize: 10 }} />
 
@@ -85,22 +85,22 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
             )}
 
             {/* Main Lines */}
-            <Line 
-              type="monotone" 
-              dataKey="baseline" 
-              stroke="#ef4444" 
-              strokeWidth={3} 
+            <Line
+              type="monotone"
+              dataKey="baseline"
+              stroke="#ef4444"
+              strokeWidth={3}
               dot={false}
               activeDot={{ r: 6 }}
               isAnimationActive={true}
               strokeDasharray="5 5"
             />
             {showIntervention && (
-              <Line 
-                type="monotone" 
-                dataKey="intervention" 
-                stroke="#22c55e" 
-                strokeWidth={3} 
+              <Line
+                type="monotone"
+                dataKey="intervention"
+                stroke="#22c55e"
+                strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 6 }}
                 isAnimationActive={true}
@@ -109,7 +109,7 @@ export default function TrajectoryChart({ trajectory, showIntervention, showConf
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      
+
       {/* Legend */}
       <div className="flex gap-6 mt-4 justify-center text-xs">
         <div className="flex items-center gap-2 text-gray-400">

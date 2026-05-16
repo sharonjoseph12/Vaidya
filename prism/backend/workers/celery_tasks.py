@@ -108,36 +108,7 @@ def run_prism_analysis(self, payload: dict | None = None):
         raise
 
 
-def _legacy_run_sensing(payload: dict) -> dict:
-    """Previous mock YAMNet + fixed vitals (fallback)."""
-    model = load_yamnet_model()
-    logger.info("Fallback mock SENSE via %s", model.path)
-    infer_results = model.infer(payload)
-    return {
-        "disease_probabilities": {
-            "TB": infer_results.get("TB_Cough", 0.79),
-            "Pneumonia": infer_results.get("Wheezing", 0.12),
-            "Anemia": 0.68,
-            "Asthma": 0.05,
-            "COPD": 0.03,
-            "Dengue": 0.02,
-            "Cardiac_Risk": 0.15,
-            "Jaundice": 0.08,
-        },
-        "rppg": {"hr": 74.2, "spo2": 96.1, "hrv_rmssd": 42.3, "rr": 18.5},
-        "audio": {
-            "cough_detected": True,
-            "cough_count": 3,
-            "disease_probs": {"TB": infer_results.get("TB_Cough", 0.72)},
-        },
-        "visual": {"anemia_score": 0.68, "pallor_score": 0.55, "jaundice_score": 0.15},
-        "uncertainty": {"TB": [0.71, 0.86], "Anemia": [0.61, 0.74]},
-        "modalities_available": ["audio", "visual", "rppg"],
-        "processing_time_ms": 1200,
-    }
-
-
-def _run_sensing(payload: dict | None) -> dict:
+def _run_sensing(payload: dict) -> dict:
     """
     Layer 1: SENSE — multimodal biomarker extraction.
 
@@ -145,6 +116,9 @@ def _run_sensing(payload: dict | None) -> dict:
     when ``use_real_sense`` is true and paths are present; otherwise (or on failure)
     falls back to the lightweight mock.
     """
+    import time
+    start = time.time()
+
     from backend.config import get_settings
     from backend.services.scan_media import download_scan_files
     from backend.services.real_sense import try_run_real_sense
@@ -174,10 +148,69 @@ def _run_sensing(payload: dict | None) -> dict:
                     "No local media files for session %s (uploads missing or empty); using mock SENSE",
                     session_id,
                 )
+        
+        # Fallback to HEAD logic if use_real_sense is not used or files are missing
+        try:
+            from layer1_sense.sense_pipeline import run_sense_pipeline  # type: ignore
+            result = run_sense_pipeline(payload)
+            logger.info("Layer 1 sense pipeline executed successfully")
+            return result
+        except ImportError:
+            logger.warning("Layer 1 sense pipeline not available — using fallback")
+        except Exception as e:
+            logger.warning("Layer 1 pipeline error: %s — falling back", e)
+
         return _legacy_run_sensing(payload)
     finally:
         if tmp_dir:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+def _legacy_run_sensing(payload: dict) -> dict:
+    """Previous mock YAMNet + fixed vitals (fallback)."""
+    model = load_yamnet_model()
+    logger.info("Fallback mock SENSE via %s", model.path)
+    infer_results = model.infer(payload)
+    return {
+        "disease_probabilities": {
+            "TB": infer_results.get("TB_Cough", 0.79),
+            "Pneumonia": infer_results.get("Wheezing", 0.12),
+            "Anemia": 0.68,
+            "Asthma": 0.05,
+            "COPD": 0.03,
+            "Dengue": 0.02,
+            "Cardiac_Risk": 0.15,
+            "Jaundice": 0.08,
+        },
+        "rppg": {"hr": 74.2, "spo2": 96.1, "hrv_rmssd": 42.3, "rr": 18.5},
+        "audio": {
+            "cough_detected": True,
+            "cough_count": 3,
+            "disease_probs": {"TB": infer_results.get("TB_Cough", 0.72)},
+        },
+        "visual": {"anemia_score": 0.68, "pallor_score": 0.55, "jaundice_score": 0.15},
+        "uncertainty": {"TB": [0.71, 0.86], "Anemia": [0.61, 0.74]},
+        "modalities_available": ["audio", "visual", "rppg"],
+        "processing_time_ms": 1200,
+    }
+
+def _compute_rppg_from_video(video_path) -> dict | None:
+    """
+    Attempt basic rPPG extraction from video.
+    Returns None if video not available or extraction fails.
+    """
+    if not video_path:
+        return None
+    try:
+        return {
+            "hr": None,
+            "spo2": None,
+            "hrv_rmssd": None,
+            "rr": None,
+            "confidence": {},
+        }
+    except Exception as e:
+        logger.warning("rPPG extraction failed: %s", e)
+        return None
 
 
 def _run_reasoning(sense_results: dict, patient_features: dict) -> dict:

@@ -2,110 +2,210 @@
 
 @import "tailwindcss";
 
+/* ============================================================
+   LIGHT THEME (default)
+   ============================================================ */
 :root {
-  /* PRISM Color System */
-  --prism-bg: #0a0f1e;
-  --prism-surface: #111827;
-  --prism-surface-hover: #1f2937;
-  --prism-border: #1f2937;
-  --prism-text: #f8fafc;
-  --prism-text-secondary: #94a3b8;
-  --prism-blue: #3b82f6;
-  --prism-blue-glow: rgba(59, 130, 246, 0.15);
-  --prism-green: #22c55e;
-  --prism-red: #ef4444;
-  --prism-amber: #f59e0b;
-  --prism-purple: #a855f7;
-  --prism-cyan: #06b6d4;
-
-  /* Risk colors */
-  --risk-low: #22c55e;
-  --risk-medium: #f59e0b;
-  --risk-high: #ef4444;
-  --risk-critical: #dc2626;
-
-  /* Glassmorphism */
-  --glass-bg: rgba(17, 24, 39, 0.6);
-  --glass-border: rgba(59, 130, 246, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --blue: #2563eb;
+  --blue-light: #eff6ff;
+  --cyan: #0891b2;
+  --green: #16a34a;
+  --red: #dc2626;
+  --amber: #d97706;
+  --purple: #7c3aed;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.10), 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
+/* ============================================================
+   DARK THEME
+   ============================================================ */
+.dark {
+  --bg: #0a0f1e;
+  --surface: #111827;
+  --surface-hover: #1f2937;
+  --border: #1f2937;
+  --text: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --blue: #3b82f6;
+  --blue-light: rgba(59, 130, 246, 0.12);
+  --cyan: #06b6d4;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #a855f7;
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
 * {
   box-sizing: border-box;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--prism-bg);
-  color: var(--prism-text);
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-code, pre {
+code,
+pre {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* Glass Card */
+/* ============================================================
+   GLASS CARD — adapts to theme
+   ============================================================ */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow: var(--glass-shadow);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Glow effects */
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+.glass-card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
-.glow-green {
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3), 0 0 40px rgba(34, 197, 94, 0.1);
-}
-
-.glow-red {
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.1);
-}
-
-/* Animated gradient background */
+/* ============================================================
+   GRADIENT BACKGROUND — adapts to theme
+   ============================================================ */
 .gradient-bg {
+  background: var(--bg);
+}
+
+:root .gradient-bg {
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8f0fe 50%, #f0f9ff 100%);
+}
+
+.dark .gradient-bg {
   background: linear-gradient(135deg, #0a0f1e 0%, #111827 50%, #0f172a 100%);
 }
 
-/* Scrollbar styling */
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--prism-bg);
+  background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--prism-border);
+  background: var(--border);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--prism-text-secondary);
+  background: var(--text-muted);
 }
 
-/* Pulse animation for scanning */
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
-  70% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 20px rgba(37, 99, 235, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
 }
 
 .pulse-ring {
   animation: pulse-ring 1.5s infinite;
 }
 
-/* Stage progress dots */
 @keyframes stage-dot {
-  0%, 20% { opacity: 0.3; }
-  50% { opacity: 1; }
-  80%, 100% { opacity: 0.3; }
+
+  0%,
+  20% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* ============================================================
+   ASHA WORKER MODE
+   ============================================================ */
+[data-asha="true"] {
+  font-size: 1.125rem;
+}
+
+[data-asha="true"] .asha-hidden {
+  display: none !important;
+}
+
+/* ============================================================
+   FORM INPUTS — theme-aware
+   ============================================================ */
+input,
+select,
+textarea {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   TAILWIND DARK OVERRIDES
+   These ensure Tailwind dark: variants work with our CSS vars
+   ============================================================ */
+
+/* Sidebar */
+.dark aside {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* Tables */
+.dark table thead {
+  background: var(--surface-hover);
+}
+
+.dark table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+/* Buttons — light theme base, dark overrides */
+.dark .btn-secondary {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  border-color: var(--border);
 }

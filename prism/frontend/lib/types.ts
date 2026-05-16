@@ -252,3 +252,82 @@ export interface FLRound {
   dp_epsilon_spent: number;
   completed_at?: string;
 }
+
+export interface FLNode {
+  node_id: string;
+  hospital_name: string;
+  status: "active" | "idle" | "offline";
+  rounds_participated: number;
+  data_samples_contributed: number;
+  dp_epsilon_spent: number;
+  last_seen?: string;
+}
+
+export interface ModelVersion {
+  version: string;
+  accuracy: number;
+  loss: number;
+  trained_at: string;
+  participating_nodes: number;
+}
+
+// ============================================================
+// Recent Sessions & Health
+// ============================================================
+
+export interface RecentSession {
+  session_id: string;
+  patient_id: string;
+  patient_name?: string;
+  primary_diagnosis?: string;
+  confidence_score?: number;
+  created_at: string;
+}
+
+export interface HealthStatus {
+  status: "ok" | "degraded" | "error";
+  version?: string;
+  uptime_seconds?: number;
+  latency_ms?: number;
+}
+
+// ============================================================
+// Review & Audit Types
+// ============================================================
+
+export interface PendingReview {
+  session_id: string;
+  patient_id: string;
+  patient_name?: string;
+  primary_diagnosis: string;
+  confidence_score: number;
+  created_at: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  timestamp: string;
+  user_id: string;
+  user_name?: string;
+  action: "create" | "read" | "update" | "delete" | "export";
+  resource_type: string;
+  resource_id: string;
+}
+
+export interface AuditLogResponse {
+  entries: AuditEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface SessionSummary {
+  session_id: string;
+  created_at: string;
+  primary_diagnosis?: string;
+  confidence_score?: number;
+  disease_probabilities: Record<string, number>;
+  sense_results?: {
+    rppg?: { hr: number; spo2: number; hrv_rmssd: number; rr: number };
+  };
+}
