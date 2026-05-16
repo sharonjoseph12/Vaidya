@@ -41,9 +41,8 @@ export default function NewPatientPage() {
     };
 
     try {
-      // In production, this saves to backend. Using mock response here for demo.
-      // const res = await createPatient(data);
-      setTimeout(() => router.push("/scan"), 1500);
+      const res = await createPatient(data);
+      setTimeout(() => router.push(`/scan?patientId=${res.id}`), 1000);
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -53,13 +52,19 @@ export default function NewPatientPage() {
   return (
     <div className="min-h-screen gradient-bg p-6 md:p-10 font-sans">
       <div className="max-w-5xl mx-auto space-y-8">
-        
+
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Register Patient</h1>
-            <p className="text-gray-400">Link ABHA ID or enter demographics manually</p>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Register Patient</h1>
+            <p style={{ color: "var(--text-secondary)" }}>Link ABHA ID or enter demographics manually</p>
           </div>
-          <button onClick={() => router.back()} className="text-gray-400 hover:text-white px-4 py-2 border border-gray-700 rounded-lg">
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 rounded-lg border transition"
+            style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+          >
             Cancel
           </button>
         </div>
@@ -69,8 +74,8 @@ export default function NewPatientPage() {
             <ABHAVerification onVerified={handleVerified} />
 
             <form onSubmit={handleSubmit} className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Patient Demographics</h3>
-              
+              <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--text)" }}>Patient Demographics</h3>
+
               <div className="space-y-4">
                 {profile?.verified && (
                   <div className="bg-green-500/10 border border-green-500/30 p-3 rounded-lg text-sm text-green-400 mb-4 flex items-start gap-2">
@@ -78,22 +83,41 @@ export default function NewPatientPage() {
                     <div>Profile data populated from ABHA. Verify and complete missing fields.</div>
                   </div>
                 )}
-                
+
                 <input type="hidden" name="abha_id" value={profile?.verified ? "91-1234-5678-9012" : ""} />
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Full Name</label>
-                  <input name="name" defaultValue={profile?.name || ""} required className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white" />
+                  <label className="block text-xs mb-1 uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>Full Name</label>
+                  <input
+                    name="name"
+                    defaultValue={profile?.name || ""}
+                    required
+                    className="w-full rounded-lg px-4 py-2 border focus:outline-none focus:border-blue-500"
+                    style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}
+                  />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Age</label>
-                    <input name="age" type="number" defaultValue={profile?.age || ""} required className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white" />
+                    <label className="block text-xs mb-1 uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>Age</label>
+                    <input
+                      name="age"
+                      type="number"
+                      defaultValue={profile?.age || ""}
+                      required
+                      className="w-full rounded-lg px-4 py-2 border focus:outline-none focus:border-blue-500"
+                      style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Sex</label>
-                    <select name="sex" defaultValue={profile?.gender || "M"} required className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white">
+                    <label className="block text-xs mb-1 uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>Sex</label>
+                    <select
+                      name="sex"
+                      defaultValue={profile?.gender || "M"}
+                      required
+                      className="w-full rounded-lg px-4 py-2 border focus:outline-none focus:border-blue-500"
+                      style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}
+                    >
                       <option value="M">Male</option>
                       <option value="F">Female</option>
                       <option value="O">Other</option>
@@ -102,18 +126,33 @@ export default function NewPatientPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Location / PIN</label>
-                  <input name="location" placeholder="e.g., Rural District, 400001" required className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white" />
+                  <label className="block text-xs mb-1 uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>Location / PIN</label>
+                  <input
+                    name="location"
+                    placeholder="e.g., Rural District, 400001"
+                    required
+                    className="w-full rounded-lg px-4 py-2 border focus:outline-none focus:border-blue-500"
+                    style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}
+                  />
                 </div>
 
-                <div className="pt-4 border-t border-gray-800">
+                <div className="pt-4 border-t" style={{ borderColor: "var(--border)" }}>
                   <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" required className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500" />
-                    <span className="text-sm text-gray-400">I confirm patient consent obtained for multimodal screening and demographic encryption as per DPDP Act 2023.</span>
+                    <input
+                      type="checkbox"
+                      required
+                      className="mt-1 w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                      style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+                    />
+                    <span className="text-sm" style={{ color: "var(--text-secondary)" }}>I confirm patient consent obtained for multimodal screening and demographic encryption as per DPDP Act 2023.</span>
                   </label>
                 </div>
 
-                <button type="submit" disabled={loading} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 mt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 mt-6"
+                >
                   {loading ? "Saving..." : "Save & Proceed to Scan →"}
                 </button>
               </div>

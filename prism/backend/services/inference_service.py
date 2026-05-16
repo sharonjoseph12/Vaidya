@@ -5,6 +5,8 @@ Chains Layer 1→2→3→4 processing for the full diagnostic pipeline.
 
 import logging
 import time
+from pathlib import Path
+from layer2_reason.causal_engine import PRISMCausalEngine
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +21,14 @@ class InferenceService:
     def __init__(self):
         self._models_loaded = False
 
-    def load_models(self):
-        """Load all ML models at startup (lazy initialization)."""
-        # TODO: Load actual models when Persons 1-3 deliver
-        # self.sense_model = load_sense_model()
-        # self.causal_engine = load_causal_engine()
-        # self.digital_twin = load_digital_twin()
-        # self.rl_optimizer = load_rl_optimizer()
+        # Load actual models
+        self.causal_engine_tb = PRISMCausalEngine(
+            disease="tb",
+            graphs_dir=Path("/app/layer2_reason/graphs/"),
+            models_dir=Path("/app/layer2_reason/scm_models/")
+        )
         self._models_loaded = True
-        logger.info("Inference models loaded (mock mode)")
+        logger.info("Inference models loaded (Layer 2 Integrated)")
 
     DEMO_PATIENT_RESULT = {
         "disease_probabilities": {"TB": 0.79, "Anemia": 0.71, "Pneumonia": 0.12, "Healthy": 0.05},
@@ -143,8 +144,28 @@ class InferenceService:
 
     def _run_reason(self, sense_results, patient_features):
         """Layer 2 — delegates to Person 2's causal engine."""
-        # TODO: Integrate actual REASON engine
-        return None
+        # Map sense_results + patient_features to engine input
+        # For demo, we use a default disease probability of 0.75 if not provided
+        prob = patient_features.get("disease_probability", 0.75)
+        
+        report = self.causal_engine_tb.full_causal_analysis(
+            patient_features=patient_features,
+            disease_probability=prob
+        )
+        
+        return {
+            "attributions": report.causal_attributions.attributions,
+            "narrative": report.narrative,
+            "causal_graph_dot": report.causal_graph_dot,
+            "counterfactuals": [
+                {
+                    "changes": cf.changes,
+                    "original_probability": prob,
+                    "new_probability": cf.new_disease_probability,
+                    "feasibility_score": cf.feasibility_score
+                } for cf in report.counterfactuals
+            ]
+        }
 
     def _run_project(self, sense, causal, features):
         """Layer 3 — delegates to Person 3's digital twin."""

@@ -103,22 +103,61 @@ def run_prism_analysis(self, payload: dict):
 def _run_sensing(payload: dict) -> dict:
     """
     Layer 1: SENSE — Multimodal biomarker extraction.
-    Calls Person 1's models (or returns mock data for platform testing).
+    Attempts to call the real Layer 1 sense pipeline.
+    Falls back to rPPG-only with empty disease probabilities if unavailable.
+    NEVER returns hardcoded disease values.
     """
-    # TODO: Replace with actual Layer 1 inference when Person 1 delivers models
+    import time
+    start = time.time()
+
+    # Attempt to call the real Layer 1 pipeline
+    try:
+        from layer1_sense.sense_pipeline import run_sense_pipeline  # type: ignore
+        result = run_sense_pipeline(payload)
+        logger.info("Layer 1 sense pipeline executed successfully")
+        return result
+    except ImportError:
+        logger.warning("Layer 1 sense pipeline not available — using rPPG-only fallback")
+    except Exception as e:
+        logger.warning("Layer 1 pipeline error: %s — falling back to rPPG-only", e)
+
+    # Fallback: return only rPPG vitals, empty disease probabilities
+    # rPPG vitals are computed from video if available; otherwise null
+    rppg_vitals = _compute_rppg_from_video(payload.get("video_path"))
+
+    elapsed_ms = int((time.time() - start) * 1000)
     return {
-        "disease_probabilities": {
-            "TB": 0.79, "Pneumonia": 0.12, "Anemia": 0.68,
-            "Asthma": 0.05, "COPD": 0.03, "Dengue": 0.02,
-            "Cardiac_Risk": 0.15, "Jaundice": 0.08,
-        },
-        "rppg": {"hr": 74.2, "spo2": 96.1, "hrv_rmssd": 42.3, "rr": 18.5},
-        "audio": {"cough_detected": True, "cough_count": 3, "disease_probs": {"TB": 0.72}},
-        "visual": {"anemia_score": 0.68, "pallor_score": 0.55, "jaundice_score": 0.15},
-        "uncertainty": {"TB": [0.71, 0.86], "Anemia": [0.61, 0.74]},
-        "modalities_available": ["audio", "visual", "rppg"],
-        "processing_time_ms": 1200,
+        "disease_probabilities": {},          # empty — no fake/hardcoded data
+        "rppg": rppg_vitals,
+        "audio": None,
+        "visual": None,
+        "uncertainty": {},
+        "modalities_available": ["rppg"] if rppg_vitals else [],
+        "model_status": "unavailable",        # signals frontend to show banner
+        "processing_time_ms": elapsed_ms,
     }
+
+
+def _compute_rppg_from_video(video_path) -> dict | None:
+    """
+    Attempt basic rPPG extraction from video.
+    Returns None if video not available or extraction fails.
+    """
+    if not video_path:
+        return None
+    try:
+        # Placeholder until real rPPG model is integrated
+        # Returns null vitals to indicate "not computed" rather than fake values
+        return {
+            "hr": None,
+            "spo2": None,
+            "hrv_rmssd": None,
+            "rr": None,
+            "confidence": {},
+        }
+    except Exception as e:
+        logger.warning("rPPG extraction failed: %s", e)
+        return None
 
 
 def _run_reasoning(sense_results: dict, patient_features: dict) -> dict:

@@ -3,8 +3,8 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     env_file:
@@ -24,8 +24,8 @@ services:
 
   celery_worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: backend/Dockerfile
     env_file:
       - ./backend/.env
     depends_on:
@@ -36,8 +36,8 @@ services:
 
   fl_server:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: backend/Dockerfile
     ports:
       - "8080:8080"
     env_file:

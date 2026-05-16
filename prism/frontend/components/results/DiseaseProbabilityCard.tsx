@@ -28,7 +28,7 @@ export default function DiseaseProbabilityCard({
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-semibold text-white">{label}</h3>
+          <h3 className="font-semibold" style={{ color: "var(--text)" }}>{label}</h3>
           <span
             className="text-xs px-2 py-0.5 rounded-full font-medium"
             style={{ backgroundColor: `${color}20`, color }}
@@ -37,9 +37,10 @@ export default function DiseaseProbabilityCard({
           </span>
         </div>
         {trend && (
-          <span className={`text-lg ${
-            trend === "up" ? "text-red-400" : trend === "down" ? "text-green-400" : "text-gray-400"
-          }`}>
+          <span className={`text-lg ${trend === "up" ? "text-red-400" : trend === "down" ? "text-green-400" : ""
+            }`}
+            style={trend === "stable" ? { color: "var(--text-muted)" } : undefined}
+          >
             {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"}
           </span>
         )}
@@ -48,12 +49,12 @@ export default function DiseaseProbabilityCard({
       {/* Probability bar */}
       <div className="mb-2">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-400">Probability</span>
+          <span style={{ color: "var(--text-secondary)" }}>Probability</span>
           <span className="font-mono font-bold" style={{ color }}>
             {formatPercent(probability)}
           </span>
         </div>
-        <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
           <motion.div
             className="h-full rounded-full"
             style={{ backgroundColor: color }}
@@ -66,7 +67,7 @@ export default function DiseaseProbabilityCard({
 
       {/* Confidence interval */}
       {confidenceInterval && (
-        <div className="text-xs text-gray-500 mt-2">
+        <div className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
           90% CI: {formatPercent(confidenceInterval[0])} – {formatPercent(confidenceInterval[1])}
         </div>
       )}

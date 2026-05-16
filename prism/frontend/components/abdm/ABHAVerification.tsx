@@ -22,16 +22,17 @@ export default function ABHAVerification({ onVerified }: ABHAVerificationProps) 
 
     try {
       const profile = await verifyABHA(abhaId);
-      if (profile.verified) {
+      const typedProfile = profile as ABHAProfile;
+      if (typedProfile.verified) {
         setStatus("success");
-        onVerified(profile);
+        onVerified(typedProfile);
       } else {
         setStatus("error");
         setError("Invalid ABHA ID");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus("error");
-      setError(err.message || "Verification failed");
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);
     }
@@ -39,10 +40,10 @@ export default function ABHAVerification({ onVerified }: ABHAVerificationProps) 
 
   return (
     <div className="glass-card p-5">
-      <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--text)" }}>
         <span className="text-blue-500">🛡️</span> ABHA Verification
       </h3>
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
         Enter Ayushman Bharat Health Account (ABHA) ID to fetch medical history.
       </p>
 
@@ -52,7 +53,8 @@ export default function ABHAVerification({ onVerified }: ABHAVerificationProps) 
           placeholder="14-digit ABHA ID (e.g., 91-0000-0000-0000)"
           value={abhaId}
           onChange={(e) => setAbhaId(e.target.value)}
-          className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+          className="flex-1 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors border"
+          style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }}
         />
         <button
           onClick={handleVerify}

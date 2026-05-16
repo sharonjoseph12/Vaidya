@@ -151,3 +151,23 @@ async def list_patients(
         page=page,
         per_page=per_page,
     )
+
+
+@router.get("/{patient_id}/sessions")
+async def get_patient_sessions(
+    patient_id: UUID,
+    current_user: dict = Depends(get_current_user),
+):
+    """Get all diagnostic sessions for a patient, sorted by date descending."""
+    client = get_supabase_client()
+
+    result = (
+        client.table("diagnostic_sessions")
+        .select("id, primary_diagnosis, confidence_score, disease_probabilities, sense_results, created_at, status")
+        .eq("patient_id", str(patient_id))
+        .eq("status", "complete")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return result.data or []

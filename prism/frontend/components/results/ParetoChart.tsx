@@ -17,34 +17,34 @@ export default function ParetoChart({ options }: ParetoChartProps) {
         Cost vs. Outcome Trade-offs
       </h3>
       <p className="text-xs text-gray-500 mb-4">Pareto frontier of available interventions</p>
-      
+
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
-            <XAxis 
-              type="number" 
-              dataKey="cost" 
-              name="Cost" 
-              tickFormatter={(v) => `₹${v}`} 
+            <XAxis
+              type="number"
+              dataKey="cost"
+              name="Cost"
+              tickFormatter={(v) => `₹${v}`}
               tick={{ fill: "#94a3b8", fontSize: 12 }}
               label={{ value: "Cost (INR)", position: "insideBottom", offset: -15, fill: "#94a3b8", fontSize: 12 }}
               axisLine={false}
               tickLine={false}
             />
-            <YAxis 
-              type="number" 
-              dataKey="qaly_gain" 
-              name="Benefit" 
+            <YAxis
+              type="number"
+              dataKey="qaly_gain"
+              name="Benefit"
               tick={{ fill: "#94a3b8", fontSize: 12 }}
               label={{ value: "Health Benefit (QALY)", angle: -90, position: "insideLeft", offset: 10, fill: "#94a3b8", fontSize: 12 }}
               axisLine={false}
               tickLine={false}
             />
             <ZAxis type="category" dataKey="label" name="Option" />
-            <Tooltip 
+            <Tooltip
               cursor={{ strokeDasharray: "3 3" }}
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value: any, name: string) => {
+              formatter={(value, name) => {
                 if (name === "Cost") return formatCurrency(value as number);
                 if (name === "Benefit") return `${value} QALY`;
                 return value;

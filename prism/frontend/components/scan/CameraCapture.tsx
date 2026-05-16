@@ -6,11 +6,14 @@ type ScanState = "IDLE" | "DETECTING_FACE" | "SCANNING" | "COMPLETE" | "ERROR";
 
 interface CameraCaptureProps {
   onComplete: (videoBlob: Blob) => void;
+  onStartRecording?: () => void;
   duration?: number;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
 }
 
-export default function CameraCapture({ onComplete, duration = 30 }: CameraCaptureProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export default function CameraCapture({ onComplete, onStartRecording, duration = 30, videoRef: externalVideoRef }: CameraCaptureProps) {
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = externalVideoRef || internalVideoRef;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [state, setState] = useState<ScanState>("IDLE");
@@ -53,7 +56,8 @@ export default function CameraCapture({ onComplete, duration = 30 }: CameraCaptu
     recorder.start();
     mediaRecorderRef.current = recorder;
     setState("SCANNING");
-  }, [onComplete]);
+    if (onStartRecording) onStartRecording();
+  }, [onComplete, onStartRecording]);
 
   // Countdown timer
   useEffect(() => {
@@ -85,7 +89,9 @@ export default function CameraCapture({ onComplete, duration = 30 }: CameraCaptu
     };
   }, []);
 
-  const ringColor = faceDetected ? "ring-green-500 shadow-[0_0_30px_rgba(34,197,94,0.4)]" : "ring-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]";
+  const ringColor = faceDetected
+    ? "ring-green-500 shadow-[0_0_20px_rgba(22,163,74,0.3)]"
+    : "ring-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.2)]";
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -104,11 +110,10 @@ export default function CameraCapture({ onComplete, duration = 30 }: CameraCaptu
         )}
       </div>
 
-      {/* Progress bar */}
       {state === "SCANNING" && (
-        <div className="w-80 h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div className="w-80 h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-1000 ease-linear"
+            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000 ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -119,22 +124,22 @@ export default function CameraCapture({ onComplete, duration = 30 }: CameraCaptu
         {state === "IDLE" && (
           <button
             onClick={startCamera}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold transition-all hover:shadow-lg hover:shadow-blue-500/25"
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-md hover:shadow-lg"
           >
             Start Scan
           </button>
         )}
         {state === "DETECTING_FACE" && (
-          <p className="text-amber-400 animate-pulse">Detecting face...</p>
+          <p className="text-amber-600 animate-pulse font-medium">Detecting face...</p>
         )}
         {state === "SCANNING" && (
-          <p className="text-blue-400">Recording — hold still for {countdown}s</p>
+          <p className="text-blue-600 font-medium">Recording — hold still for {countdown}s</p>
         )}
         {state === "COMPLETE" && (
-          <p className="text-green-400 font-semibold">Capture complete ✓</p>
+          <p className="text-green-600 font-semibold">Capture complete ✓</p>
         )}
         {state === "ERROR" && (
-          <p className="text-red-400">Camera access denied. Please enable permissions.</p>
+          <p className="text-red-600">Camera access denied. Please enable permissions.</p>
         )}
       </div>
     </div>

@@ -26,7 +26,7 @@ export default function ScanProgress({ stage, progress, message }: ScanProgressP
       {/* Progress ring */}
       <div className="relative w-48 h-48">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r={radius} fill="none" stroke="#1f2937" strokeWidth="8" />
+          <circle cx="100" cy="100" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="8" />
           <motion.circle
             cx="100" cy="100" r={radius}
             fill="none"
@@ -40,8 +40,8 @@ export default function ScanProgress({ stage, progress, message }: ScanProgressP
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold">{Math.round(progress * 100)}%</span>
-          <span className="text-xs text-gray-400 mt-1">{stage === "complete" ? "Done" : "Processing"}</span>
+          <span className="text-3xl font-bold text-slate-800">{Math.round(progress * 100)}%</span>
+          <span className="text-xs text-slate-500 mt-1">{stage === "complete" ? "Done" : "Processing"}</span>
         </div>
       </div>
 
@@ -53,17 +53,15 @@ export default function ScanProgress({ stage, progress, message }: ScanProgressP
           return (
             <motion.div
               key={s.key}
-              className={`flex flex-col items-center gap-1 transition-all duration-300 ${
-                isDone ? "opacity-100" : isActive ? "opacity-100" : "opacity-30"
-              }`}
+              className={`flex flex-col items-center gap-1 transition-all duration-300 ${isDone ? "opacity-100" : isActive ? "opacity-100" : "opacity-30"
+                }`}
               animate={isActive ? { scale: [1, 1.1, 1] } : {}}
               transition={{ repeat: Infinity, duration: 1.5 }}
             >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                isDone ? "bg-green-500/20 ring-1 ring-green-500" :
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isDone ? "bg-green-500/20 ring-1 ring-green-500" :
                 isActive ? "bg-blue-500/20 ring-1 ring-blue-500 pulse-ring" :
-                "bg-gray-800"
-              }`}>
+                  "bg-gray-800"
+                }`}>
                 {isDone ? "✓" : s.icon}
               </div>
               <span className="text-xs">{s.label}</span>

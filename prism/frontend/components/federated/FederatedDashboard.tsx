@@ -19,7 +19,7 @@ export default function FederatedDashboard() {
           getFLRounds(20)
         ]);
         setStatus(statusData);
-        setRounds(roundsData.rounds.reverse()); // Chronological for chart
+        setRounds(Array.isArray(roundsData) ? roundsData.reverse() : (roundsData.rounds || []).reverse()); // Chronological for chart
       } catch (err) {
         console.error("Failed to load FL data", err);
       } finally {
@@ -32,7 +32,7 @@ export default function FederatedDashboard() {
   }, []);
 
   if (loading || !status) {
-    return <div className="glass-card p-6 animate-pulse bg-gray-800/50 h-64"></div>;
+    return <div className="glass-card p-6 animate-pulse h-64" style={{ background: "var(--surface-hover)" }}></div>;
   }
 
   // Chart data
@@ -51,9 +51,9 @@ export default function FederatedDashboard() {
             <div className={`w-4 h-4 rounded-full ${status.server_status === 'running' ? 'bg-green-500' : 'bg-red-500'}`}></div>
             {status.server_status === 'running' && <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>}
           </div>
-          <h2 className="text-xl font-bold text-white">Federated Learning Server</h2>
+          <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>Federated Learning Server</h2>
         </div>
-        <div className="text-sm text-gray-400 font-mono">
+        <div className="text-sm font-mono" style={{ color: "var(--text-muted)" }}>
           Model: {status.global_model_version}
         </div>
       </div>
@@ -61,34 +61,38 @@ export default function FederatedDashboard() {
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass-card p-4 border-b-2 border-blue-500">
-          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Current Round</div>
-          <div className="text-3xl font-bold text-white">{status.current_round}</div>
+          <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Current Round</div>
+          <div className="text-3xl font-bold" style={{ color: "var(--text)" }}>{status.current_round}</div>
         </div>
         <div className="glass-card p-4 border-b-2 border-green-500">
-          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Active Nodes</div>
-          <div className="text-3xl font-bold text-white">{status.active_nodes} <span className="text-sm text-gray-500 font-normal">/ {status.total_nodes}</span></div>
+          <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Active Nodes</div>
+          <div className="text-3xl font-bold" style={{ color: "var(--text)" }}>
+            {status.active_nodes} <span className="text-sm font-normal" style={{ color: "var(--text-muted)" }}>/ {status.total_nodes}</span>
+          </div>
         </div>
         <div className="glass-card p-4 border-b-2 border-purple-500">
-          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Privacy Budget (ε)</div>
-          <div className="text-3xl font-bold text-white">{status.cumulative_dp_epsilon.toFixed(2)} <span className="text-sm text-gray-500 font-normal">spent</span></div>
+          <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Privacy Budget (ε)</div>
+          <div className="text-3xl font-bold" style={{ color: "var(--text)" }}>
+            {status.cumulative_dp_epsilon.toFixed(2)} <span className="text-sm font-normal" style={{ color: "var(--text-muted)" }}>spent</span>
+          </div>
         </div>
         <div className="glass-card p-4 border-b-2 border-amber-500">
-          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Global Accuracy</div>
-          <div className="text-3xl font-bold text-white">{formatPercent(status.last_round_metrics?.accuracy || 0)}</div>
+          <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-muted)" }}>Global Accuracy</div>
+          <div className="text-3xl font-bold" style={{ color: "var(--text)" }}>{formatPercent(status.last_round_metrics?.accuracy || 0)}</div>
         </div>
       </div>
 
       {/* Accuracy Chart */}
       <div className="glass-card p-5 h-80">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Model Convergence</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: "var(--text-secondary)" }}>Model Convergence</h3>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-            <XAxis dataKey="round" stroke="#94a3b8" tick={{fontSize: 12}} />
-            <YAxis stroke="#94a3b8" tick={{fontSize: 12}} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
-            <Tooltip 
-              contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value: number) => formatPercent(value)}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="round" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
+            <YAxis stroke="var(--text-secondary)" tick={{ fontSize: 12 }} domain={[0.5, 1]} tickFormatter={(v) => formatPercent(v)} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", borderRadius: "8px" }}
+              formatter={(value) => formatPercent(value as number)}
             />
             <Line type="monotone" dataKey="accuracy" stroke="#22c55e" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
           </LineChart>

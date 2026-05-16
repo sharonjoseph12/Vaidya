@@ -32,7 +32,7 @@ export default function CausalAttributionChart({ attributions }: CausalAttributi
             <Tooltip
               cursor={{ fill: "rgba(255,255,255,0.05)" }}
               contentStyle={{ backgroundColor: "#111827", borderColor: "#1f2937", borderRadius: "8px" }}
-              formatter={(value: number) => [formatPercent(value, 1), "Contribution"]}
+              formatter={(value) => [formatPercent(value as number, 1), "Contribution"]}
             />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
               {data.map((entry, index) => (
